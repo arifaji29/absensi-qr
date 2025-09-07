@@ -7,9 +7,9 @@ const supabase = createClient(
 );
 
 // GET: Mengambil detail (seperti nama) dari satu kelas
-// PERBAIKAN: Menggunakan 'NextRequest' dan format context yang benar
+// PERBAIKAN: Menggunakan format yang benar dan penanganan error yang lebih baik
 export async function GET(
-  request: Request, // Bisa juga 'NextRequest' dari 'next/server'
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -20,9 +20,13 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    if (error) throw error;
-    return NextResponse.json(data);
+    if (error) {
+      // Jika Supabase mengembalikan error (misal: data tidak ditemukan)
+      throw new Error(error.message);
+    }
     
+    return NextResponse.json(data);
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Kelas tidak ditemukan";
     return NextResponse.json({ message }, { status: 404 });

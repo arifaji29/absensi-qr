@@ -80,7 +80,6 @@ export default function TeachersPage() {
           + Tambah Pengajar
         </button>
       </div>
-
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
@@ -97,7 +96,6 @@ export default function TeachersPage() {
           </div>
         </div>
       )}
-
       {loading ? (<p>Memuat data...</p>) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="w-full">

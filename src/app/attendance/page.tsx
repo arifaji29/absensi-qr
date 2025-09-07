@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import Link from "next/link"; // Pastikan Link diimpor jika belum ada
+import Link from "next/link";
 
 type Attendance = {
   student_id: string;
@@ -26,7 +26,7 @@ export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [isValidated, setIsValidated] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false); // State ini akan kita gunakan
   
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [classTeachers, setClassTeachers] = useState<Teacher[]>([]);
@@ -123,7 +123,7 @@ export default function AttendancePage() {
       setIsValidationModalOpen(false);
       await fetchData(selectedDate);
     } catch (err: unknown) {
-      // PERBAIKAN: Gunakan variabel 'err'
+      // PERBAIKAN: Gunakan variabel 'err' untuk logging
       console.error("Gagal validasi:", err);
       alert("Terjadi kesalahan saat validasi.");
     }
@@ -152,6 +152,13 @@ export default function AttendancePage() {
 
   const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha"];
 
+  const handleSave = useCallback(async () => {
+    setIsSaving(true);
+    alert("Semua perubahan disimpan secara otomatis setiap kali Anda mengubah status.");
+    await new Promise(res => setTimeout(res, 500));
+    setIsSaving(false);
+  }, []);
+
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-4">Absensi {className ? `Kelas ${className}` : 'Kelas...'}</h1>
@@ -163,7 +170,10 @@ export default function AttendancePage() {
         {!isValidated && (
           <div className="flex items-center gap-3">
             <button onClick={handleReset} className="bg-gray-500 text-white px-5 py-2 rounded-md hover:bg-gray-600 font-semibold" disabled={loading}>Reset</button>
-            <button onClick={() => alert("Perubahan disimpan otomatis")} className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 font-semibold">Simpan Presensi</button>
+            {/* PERBAIKAN: Gunakan state isSaving */}
+            <button onClick={handleSave} className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 font-semibold" disabled={isSaving}>
+              {isSaving ? "Menyimpan..." : "Simpan Presensi"}
+            </button>
             <button onClick={handleOpenValidationModal} className="bg-purple-600 text-white px-5 py-2 rounded-md hover:bg-purple-700 font-semibold" disabled={loading}>Validasi</button>
           </div>
         )}
