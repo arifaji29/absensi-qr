@@ -10,6 +10,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   try {
     const { id } = params;
     const { data, error } = await supabase.from("classes").select("name").eq("id", id).single();
+
     if (error) throw error;
     return NextResponse.json(data);
   } catch (error: unknown) {

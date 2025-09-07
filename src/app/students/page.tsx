@@ -24,7 +24,6 @@ export default function StudentsPage() {
   const searchParams = useSearchParams();
   const classIdFromUrl = searchParams.get("class_id") || "";
   
-  // --- STATE YANG HILANG DIKEMBALIKAN DI SINI ---
   const [selectedClassId, setSelectedClassId] = useState("");
   const activeClassId = classIdFromUrl || selectedClassId;
 
@@ -45,7 +44,6 @@ export default function StudentsPage() {
   
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // --- FUNGSI LOAD DATA DIPERBARUI UNTUK MENGGUNAKAN activeClassId ---
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -54,7 +52,6 @@ export default function StudentsPage() {
         fetch(`/api/students${activeClassId ? `?class_id=${activeClassId}` : ""}`),
       ];
 
-      // Jika ada classId di URL, ambil juga detail nama kelasnya untuk judul
       if (classIdFromUrl) {
         promises.push(fetch(`/api/classes/${classIdFromUrl}/details`));
       }
@@ -70,55 +67,64 @@ export default function StudentsPage() {
       if (classIdFromUrl && classDetailRes && classDetailRes.ok) {
         setClassName((await classDetailRes.json()).name);
       } else {
-        setClassName(""); // Reset nama kelas jika tidak ada ID di URL
+        setClassName("");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
       alert("Gagal memuat data.");
     } finally {
       setLoading(false);
     }
-  }, [activeClassId, classIdFromUrl]); // Dependensi diperbarui
+  }, [activeClassId, classIdFromUrl]);
 
   useEffect(() => { 
     loadData(); 
   }, [loadData]);
 
+  const resetForm = useCallback(() => {
+    setForm({
+      nis: "",
+      name: "",
+      gender: "Laki-laki",
+      date_of_birth: "",
+      class_id: activeClassId,
+    });
+  }, [activeClassId]);
 
-function downloadQR(student: Student) {
-  const qrClassName = className || classes.find((c) => c.id === student.class_id)?.name || "-";
-  const temp = document.createElement("div");
-  document.body.appendChild(temp);
-  const root = createRoot(temp);
-  root.render( <QRCodeCanvas value={JSON.stringify({ nis: student.nis, name: student.name, class: qrClassName })} size={220} includeMargin /> );
-  setTimeout(() => {
-    const qrCanvas = temp.querySelector("canvas");
-    if (!qrCanvas) { root.unmount(); document.body.removeChild(temp); return; }
-    const finalCanvas = document.createElement("canvas");
-    const padding = 20, textBlockH = 80;
-    finalCanvas.width = qrCanvas.width + padding * 2;
-    finalCanvas.height = qrCanvas.height + padding + textBlockH;
-    const ctx = finalCanvas.getContext("2d")!;
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-    ctx.drawImage(qrCanvas, padding, padding);
-    ctx.fillStyle = "#000000";
-    ctx.textAlign = "center";
-    let y = padding + qrCanvas.height + 15;
-    ctx.font = "16px Arial";
-    ctx.fillText(student.nis, finalCanvas.width / 2, y); y += 22;
-    ctx.fillText(student.name, finalCanvas.width / 2, y); y += 22;
-    ctx.fillText(qrClassName, finalCanvas.width / 2, y);
-    const link = document.createElement("a");
-    link.href = finalCanvas.toDataURL("image/png");
-    link.download = `QR_${student.name}_${student.nis}.png`;
-    link.click();
-    root.unmount();
-    document.body.removeChild(temp);
-  }, 100);
-}
+  const downloadQR = useCallback((student: Student) => {
+    const qrClassName = className || classes.find((c) => c.id === student.class_id)?.name || "-";
+    const temp = document.createElement("div");
+    document.body.appendChild(temp);
+    const root = createRoot(temp);
+    root.render( <QRCodeCanvas value={JSON.stringify({ nis: student.nis, name: student.name, class: qrClassName })} size={220} includeMargin /> );
+    setTimeout(() => {
+      const qrCanvas = temp.querySelector("canvas");
+      if (!qrCanvas) { root.unmount(); document.body.removeChild(temp); return; }
+      const finalCanvas = document.createElement("canvas");
+      const padding = 20, textBlockH = 80;
+      finalCanvas.width = qrCanvas.width + padding * 2;
+      finalCanvas.height = qrCanvas.height + padding + textBlockH;
+      const ctx = finalCanvas.getContext("2d")!;
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+      ctx.drawImage(qrCanvas, padding, padding);
+      ctx.fillStyle = "#000000";
+      ctx.textAlign = "center";
+      let y = padding + qrCanvas.height + 15;
+      ctx.font = "16px Arial";
+      ctx.fillText(student.nis, finalCanvas.width / 2, y); y += 22;
+      ctx.fillText(student.name, finalCanvas.width / 2, y); y += 22;
+      ctx.fillText(qrClassName, finalCanvas.width / 2, y);
+      const link = document.createElement("a");
+      link.href = finalCanvas.toDataURL("image/png");
+      link.download = `QR_${student.name}_${student.nis}.png`;
+      link.click();
+      root.unmount();
+      document.body.removeChild(temp);
+    }, 100);
+  }, [className, classes]);
 
-  async function handleAdd(e: React.FormEvent) {
+  const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch("/api/students", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, class_id: activeClassId }), });
@@ -129,9 +135,9 @@ function downloadQR(student: Student) {
     } catch (error: unknown) {
       if (error instanceof Error) alert(error.message);
     }
-  }
+  }, [form, activeClassId, resetForm, loadData]);
 
-  async function handleEdit(e: React.FormEvent) {
+  const handleEdit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
     try {
@@ -142,9 +148,9 @@ function downloadQR(student: Student) {
     } catch (error: unknown) {
       if (error instanceof Error) alert(error.message);
     }
-  }
+  }, [editingId, form, loadData]);
 
-  async function handleDelete(id: string) {
+  const handleDelete = useCallback(async (id: string) => {
     if (!confirm("Yakin ingin menghapus siswa ini?")) return;
     try {
       const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
@@ -153,9 +159,9 @@ function downloadQR(student: Student) {
     } catch (error: unknown) {
       if (error instanceof Error) alert(error.message);
     }
-  }
+  }, [loadData]);
 
-  function openEditModal(student: Student) {
+  const openEditModal = useCallback((student: Student) => {
     setEditingId(student.id);
     setForm({
       nis: student.nis,
@@ -165,11 +171,7 @@ function downloadQR(student: Student) {
       class_id: student.class_id || activeClassId,
     });
     setShowEditModal(true);
-  }
-
-  function resetForm() {
-    setForm({ nis: "", name: "", gender: "Laki-laki", date_of_birth: "", class_id: activeClassId, });
-  }
+  }, [activeClassId]);
 
   return (
     <div className="p-6">
@@ -201,11 +203,8 @@ function downloadQR(student: Student) {
           <table className="w-full border-collapse">
             <thead className="bg-gray-100">
               <tr>
-                <th className="p-3 text-left">NIS</th>
-                <th className="p-3 text-left">Nama</th>
-                <th className="p-3 text-left">Gender</th>
-                <th className="p-3 text-left">Tanggal Lahir</th>
-                <th className="p-3 text-left">Kelas</th>
+                <th className="p-3 text-left">NIS</th><th className="p-3 text-left">Nama</th><th className="p-3 text-left">Gender</th>
+                <th className="p-3 text-left">Tanggal Lahir</th><th className="p-3 text-left">Kelas</th>
                 {classIdFromUrl && <th className="p-3 text-center">Aksi</th>}
               </tr>
             </thead>
@@ -215,9 +214,7 @@ function downloadQR(student: Student) {
               ) : (
                 students.map((s) => (
                   <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="border-b p-3">{s.nis}</td>
-                    <td className="border-b p-3">{s.name}</td>
-                    <td className="border-b p-3">{s.gender}</td>
+                    <td className="border-b p-3">{s.nis}</td><td className="border-b p-3">{s.name}</td><td className="border-b p-3">{s.gender}</td>
                     <td className="border-b p-3">{s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString("id-ID") : "-"}</td>
                     <td className="border-b p-3">{classes.find((c) => c.id === s.class_id)?.name || "-"}</td>
                     {classIdFromUrl && (
@@ -242,8 +239,7 @@ function downloadQR(student: Student) {
                   <input type="text" placeholder="NIS" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} className="border p-2 w-full rounded"/>
                   <input type="text" placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border p-2 w-full rounded" required/>
                   <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="border p-2 w-full rounded">
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
+                      <option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option>
                   </select>
                   <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="border p-2 w-full rounded"/>
                   <div className="flex justify-end pt-4 space-x-3">
@@ -261,8 +257,7 @@ function downloadQR(student: Student) {
                   <input type="text" placeholder="NIS" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} className="border p-2 w-full rounded"/>
                   <input type="text" placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border p-2 w-full rounded" required/>
                   <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="border p-2 w-full rounded">
-                      <option value="Laki-laki">Laki-laki</option>
-                      <option value="Perempuan">Perempuan</option>
+                      <option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option>
                   </select>
                   <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="border p-2 w-full rounded"/>
                   <div className="flex justify-end pt-4 space-x-3">

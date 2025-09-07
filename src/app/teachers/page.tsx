@@ -2,21 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 
-// Tipe data untuk satu pengajar
-type Teacher = {
-  id: string;
-  no_induk: string; // Pastikan nama ini cocok dengan kolom di database
-  name: string;
-  email: string;
-};
-
-// Tipe data untuk form, ID bersifat opsional
-type TeacherFormData = {
-  id?: string;
-  no_induk: string;
-  name: string;
-  email: string;
-};
+type Teacher = { id: string; no_induk: string; name: string; email: string; };
+type TeacherFormData = { id?: string; no_induk: string; name: string; email: string; };
 
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -31,7 +18,7 @@ export default function TeachersPage() {
       const res = await fetch("/api/teachers");
       if (!res.ok) throw new Error("Gagal mengambil data");
       setTeachers(await res.json());
-    } catch (error) {
+    } catch (error: unknown) {
       alert("Gagal memuat data pengajar.");
     } finally {
       setLoading(false);
@@ -100,29 +87,9 @@ export default function TeachersPage() {
           <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
             <h2 className="text-2xl font-bold mb-6">{isEditMode ? "Edit Data Pengajar" : "Tambah Pengajar Baru"}</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nomor Induk"
-                value={formData.no_induk}
-                onChange={(e) => setFormData({ ...formData, no_induk: e.target.value })}
-                className="border p-3 w-full rounded-lg"
-                required
-              />
-              <input
-                type="text"
-                placeholder="Nama Lengkap"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="border p-3 w-full rounded-lg"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Alamat Email (Opsional)"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="border p-3 w-full rounded-lg"
-              />
+              <input type="text" placeholder="Nomor Induk" value={formData.no_induk} onChange={(e) => setFormData({ ...formData, no_induk: e.target.value })} className="border p-3 w-full rounded-lg" required />
+              <input type="text" placeholder="Nama Lengkap" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="border p-3 w-full rounded-lg" required />
+              <input type="email" placeholder="Alamat Email (Opsional)" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="border p-3 w-full rounded-lg" />
               <div className="flex justify-end gap-4 pt-4">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">Batal</button>
                 <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">{isEditMode ? "Update" : "Simpan"}</button>
@@ -136,20 +103,12 @@ export default function TeachersPage() {
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="w-full">
             <thead className="bg-gray-100">
-              <tr>
-                <th className="p-4 text-left">Nomor Induk</th>
-                <th className="p-4 text-left">Nama</th>
-                <th className="p-4 text-left">Email</th>
-                <th className="p-4 text-center">Aksi</th>
-              </tr>
+              <tr><th className="p-4 text-left">Nomor Induk</th><th className="p-4 text-left">Nama</th><th className="p-4 text-left">Email</th><th className="p-4 text-center">Aksi</th></tr>
             </thead>
             <tbody>
               {teachers.map((teacher) => (
                 <tr key={teacher.id} className="hover:bg-gray-50 border-b last:border-b-0">
-                  {/* --- PERBAIKAN DI SINI --- */}
-                  <td className="p-4">{teacher.no_induk}</td>
-                  <td className="p-4 font-medium">{teacher.name}</td>
-                  <td className="p-4 text-gray-600">{teacher.email || "-"}</td>
+                  <td className="p-4">{teacher.no_induk}</td><td className="p-4 font-medium">{teacher.name}</td><td className="p-4 text-gray-600">{teacher.email || "-"}</td>
                   <td className="p-4 text-center space-x-2">
                     <button onClick={() => openModalForEdit(teacher)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">Edit</button>
                     <button onClick={() => handleDelete(teacher.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Hapus</button>

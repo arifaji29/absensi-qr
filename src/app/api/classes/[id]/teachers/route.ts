@@ -9,18 +9,15 @@ const supabase = createClient(
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
-    if (!id) {
-      return NextResponse.json({ message: "ID Kelas diperlukan" }, { status: 400 });
-    }
-    const { data, error } = await supabase.from("class_teachers").select(`teachers ( id, name )`).eq("class_id", id);
-    if (error) {
-      console.error("Supabase error fetching teachers for class:", error);
-      throw error;
-    }
-    const teachers = data.map((item: { teachers: unknown }) => item.teachers).filter(Boolean);
+    const { data, error } = await supabase.from("class_teachers").select(`teachers (id, name)`).eq("class_id", id);
+      
+    if (error) throw error;
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const teachers = data.map((item: any) => item.teachers).filter(Boolean);
     return NextResponse.json(teachers);
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Gagal mengambil data";
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan";
     return NextResponse.json({ message }, { status: 500 });
   }
 }
