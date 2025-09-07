@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -6,14 +6,13 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// PERBAIKAN FINAL: Menggunakan format context object
 export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  request: Request,
+  { params }: { params: { id: string } }
 ) {
   try {
-    // Ambil params dari Promise
-    const { id } = await context.params;
-
+    const { id } = params;
     const { data, error } = await supabase
       .from("classes")
       .select("name")
@@ -21,11 +20,12 @@ export async function GET(
       .single();
 
     if (error) throw new Error(error.message);
-
+    
     return NextResponse.json(data);
+
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Kelas tidak ditemukan";
+    const message = error instanceof Error ? error.message : "Kelas tidak ditemukan";
     return NextResponse.json({ message }, { status: 404 });
   }
 }
+
