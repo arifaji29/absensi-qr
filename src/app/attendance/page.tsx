@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
-import Link from "next/link";
 
+// Tipe data
 type Attendance = {
   student_id: string;
   nis: string;
@@ -12,7 +12,6 @@ type Attendance = {
   status: string;
   checked_in_at: string | null;
 };
-
 type Teacher = { id: string; name: string; };
 
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -21,13 +20,13 @@ export default function AttendancePage() {
   const searchParams = useSearchParams();
   const classId = searchParams.get("class_id") || "";
 
+  // State Declarations
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [isValidated, setIsValidated] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false); // State ini akan kita gunakan
-  
+  const [isSaving, setIsSaving] = useState(false);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [classTeachers, setClassTeachers] = useState<Teacher[]>([]);
   const [selectedValidatorId, setSelectedValidatorId] = useState<string>("");
@@ -55,7 +54,6 @@ export default function AttendancePage() {
       setValidatorName(validationData.validatorName || null);
       setClassTeachers(Array.isArray(teachersData) ? teachersData : []);
       setClassName(classData.name || "");
-
     } catch (err: unknown) {
       console.error("Gagal memuat data:", err);
     } finally {
@@ -66,7 +64,7 @@ export default function AttendancePage() {
   useEffect(() => {
     fetchData(selectedDate);
   }, [fetchData, selectedDate]);
-  
+
   const handleStatusChange = useCallback(async (student_id: string, new_status: string) => {
     try {
       setAttendance(prev => prev.map(s => s.student_id === student_id ? { ...s, status: new_status } : s));
@@ -123,7 +121,6 @@ export default function AttendancePage() {
       setIsValidationModalOpen(false);
       await fetchData(selectedDate);
     } catch (err: unknown) {
-      // PERBAIKAN: Gunakan variabel 'err' untuk logging
       console.error("Gagal validasi:", err);
       alert("Terjadi kesalahan saat validasi.");
     }
@@ -170,8 +167,7 @@ export default function AttendancePage() {
         {!isValidated && (
           <div className="flex items-center gap-3">
             <button onClick={handleReset} className="bg-gray-500 text-white px-5 py-2 rounded-md hover:bg-gray-600 font-semibold" disabled={loading}>Reset</button>
-            {/* PERBAIKAN: Gunakan state isSaving */}
-            <button onClick={handleSave} className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 font-semibold" disabled={isSaving}>
+            <button onClick={handleSave} className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 font-semibold" disabled={isSaving || loading}>
               {isSaving ? "Menyimpan..." : "Simpan Presensi"}
             </button>
             <button onClick={handleOpenValidationModal} className="bg-purple-600 text-white px-5 py-2 rounded-md hover:bg-purple-700 font-semibold" disabled={loading}>Validasi</button>

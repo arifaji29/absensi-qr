@@ -6,8 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET: Mengambil detail (seperti nama) dari satu kelas
-// PERBAIKAN: Menggunakan format yang benar dan penanganan error yang lebih baik
+// PERBAIKAN: Menggunakan format signature yang benar dan penanganan error yang lebih baik
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
