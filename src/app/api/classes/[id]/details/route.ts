@@ -6,13 +6,23 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+// GET: Mengambil detail (seperti nama) dari satu kelas
+// PERBAIKAN: Menggunakan 'NextRequest' dan format context yang benar
+export async function GET(
+  request: Request, // Bisa juga 'NextRequest' dari 'next/server'
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params;
-    const { data, error } = await supabase.from("classes").select("name").eq("id", id).single();
+    const { data, error } = await supabase
+      .from("classes")
+      .select("name")
+      .eq("id", id)
+      .single();
 
     if (error) throw error;
     return NextResponse.json(data);
+    
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Kelas tidak ditemukan";
     return NextResponse.json({ message }, { status: 404 });
