@@ -6,52 +6,34 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// GET: Mendukung filter berdasarkan class_id
 export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const classId = searchParams.get("class_id");
+    try {
+        const { searchParams } = new URL(req.url);
+        const class_id = searchParams.get("class_id");
 
-    let query = supabase.from("students").select("*").order("name");
+        let query = supabase.from('students').select('*').order('name');
+        if (class_id) {
+            query = query.eq('class_id', class_id);
+        }
 
-    if (classId && classId.trim() !== "") {
-      query = query.eq("class_id", classId);
+        const { data, error } = await query;
+        if (error) throw error;
+        return NextResponse.json(data);
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Gagal mengambil data siswa";
+        return NextResponse.json({ message }, { status: 500 });
     }
-
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json(data);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Terjadi kesalahan" }, { status: 500 });
-  }
 }
 
-// POST: Tambah siswa dengan prioritas class_id dari query
 export async function POST(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const classIdFromQuery = searchParams.get("class_id");
-
-    const { nis, name, gender, date_of_birth, class_id: classIdFromBody } = await req.json();
-
-    const finalClassId = classIdFromQuery || classIdFromBody || null;
-
-    const { data, error } = await supabase
-      .from("students")
-      .insert([{ nis, name, gender, date_of_birth, class_id: finalClassId }])
-      .select()
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    try {
+        const body = await req.json();
+        const { data, error } = await supabase.from('students').insert(body).select().single();
+        if (error) throw error;
+        return NextResponse.json(data, { status: 201 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Gagal menambah siswa";
+        return NextResponse.json({ message }, { status: 500 });
     }
-
-    return NextResponse.json(data, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || "Gagal menambahkan siswa" }, { status: 400 });
-  }
 }
+

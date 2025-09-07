@@ -1,40 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
-type Teacher = {
-  id: string;
-  name: string;
-};
-
-type ClassWithTeachers = {
-  id: string;
-  name: string;
-  teachers: Teacher[];
-};
+type Teacher = { id: string; name: string; };
+type ClassWithTeachers = { id: string; name: string; teachers: Teacher[]; };
 
 export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassWithTeachers[]>([]);
   const [allTeachers, setAllTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // State untuk modal tambah
   const [showAddModal, setShowAddModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
-  
-  // State untuk modal edit
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassWithTeachers | null>(null);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [classRes, teacherRes] = await Promise.all([
-        fetch("/api/classes"),
-        fetch("/api/teachers"),
-      ]);
+      const [classRes, teacherRes] = await Promise.all([fetch("/api/classes"), fetch("/api/teachers")]);
       if (!classRes.ok || !teacherRes.ok) throw new Error("Gagal memuat data");
       setClasses(await classRes.json());
       setAllTeachers(await teacherRes.json());
@@ -44,11 +29,9 @@ export default function ClassesPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    fetchData();
   }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   function openAddModal() {
     setNewClassName("");
@@ -65,37 +48,22 @@ export default function ClassesPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const res = await fetch("/api/classes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newClassName, teacherIds: selectedTeacherIds }),
-      });
+      const res = await fetch("/api/classes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newClassName, teacherIds: selectedTeacherIds }) });
       if (!res.ok) throw new Error("Gagal menambah kelas");
       setShowAddModal(false);
       await fetchData();
-    } catch (error) {
-      alert("Gagal menambah kelas.");
-    }
+    } catch (error: unknown) { alert(error instanceof Error ? error.message : "Gagal menambah kelas."); }
   }
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingClass) return;
     try {
-      const res = await fetch(`/api/classes/${editingClass.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editingClass.name,
-          teacherIds: selectedTeacherIds,
-        }),
-      });
+      const res = await fetch(`/api/classes/${editingClass.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: editingClass.name, teacherIds: selectedTeacherIds }) });
       if (!res.ok) throw new Error("Gagal mengedit kelas");
       setShowEditModal(false);
       await fetchData();
-    } catch (error) {
-      alert("Gagal mengedit kelas.");
-    }
+    } catch (error: unknown) { alert(error instanceof Error ? error.message : "Gagal mengedit kelas."); }
   }
 
   async function handleDelete(id: string) {
@@ -103,9 +71,7 @@ export default function ClassesPage() {
     try {
       await fetch(`/api/classes/${id}`, { method: "DELETE" });
       await fetchData();
-    } catch (error) {
-      alert("Gagal menghapus kelas.");
-    }
+    } catch (error: unknown) { alert(error instanceof Error ? error.message : "Gagal menghapus kelas."); }
   }
 
   function handleTeacherSelection(teacherId: string) {

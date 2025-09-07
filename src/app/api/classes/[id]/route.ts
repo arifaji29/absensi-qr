@@ -6,45 +6,34 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PUT: Mengedit/memperbarui data kelas
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
     const { name, teacherIds } = await req.json();
-
     if (!name) {
       return NextResponse.json({ message: "Nama kelas wajib diisi" }, { status: 400 });
     }
-
-    // Gunakan transaksi untuk memastikan semua operasi berhasil atau gagal bersamaan
-    const { error } = await supabase.rpc('update_class_with_teachers', {
-      p_class_id: id,
-      p_class_name: name,
-      p_teacher_ids: teacherIds
-    });
-    
-    if (error) throw error;
-
+    const { error } = await supabase.rpc('update_class_with_teachers', { p_class_id: id, p_class_name: name, p_teacher_ids: teacherIds });
+    if (error) {
+      console.error("Supabase RPC Error:", error);
+      throw error;
+    }
     return NextResponse.json({ message: "Kelas berhasil diperbarui" });
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? `Gagal mengedit kelas: ${error.message}` : "Gagal mengedit kelas";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
 
-// DELETE: Menghapus data kelas
-export async function DELETE(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-    try {
-        const { id } = params;
-        const { error } = await supabase.from('classes').delete().eq('id', id);
-        if (error) throw error;
-        return NextResponse.json({ message: 'Kelas berhasil dihapus' });
-    } catch (error: any) {
-        return NextResponse.json({ message: error.message }, { status: 500 });
-    }
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params;
+    const { error } = await supabase.from('classes').delete().eq('id', id);
+    if (error) throw error;
+    return NextResponse.json({ message: 'Kelas berhasil dihapus' });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Gagal menghapus kelas";
+    return NextResponse.json({ message }, { status: 500 });
+  }
 }
+

@@ -6,34 +6,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// DELETE: Menghapus semua record absensi untuk kelas dan tanggal tertentu
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const class_id = searchParams.get("class_id");
     const date = searchParams.get("date");
-
     if (!class_id || !date) {
-      return NextResponse.json(
-        { message: "Parameter class_id dan date diperlukan" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: "Parameter class_id dan date diperlukan" }, { status: 400 });
     }
-
-    // Hapus semua baris yang cocok
-    const { error } = await supabase
-      .from("attendance_records")
-      .delete()
-      .match({ class_id: class_id, date: date });
-
+    const { error } = await supabase.from("attendance_records").delete().match({ class_id, date });
     if (error) throw error;
-
     return NextResponse.json({ message: "Absensi berhasil direset." });
-
-  } catch (error: any) {
-    return NextResponse.json(
-      { message: error.message || "Gagal mereset absensi" },
-      { status: 500 }
-    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Gagal mereset absensi";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
+

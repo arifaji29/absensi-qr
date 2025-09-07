@@ -1,52 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
-// Tipe data yang kita gunakan di halaman ini
-type Attendance = {
-  student_id: string;
-  nis: string;
-  name: string;
-  status: string;
-  checked_in_at: string | null;
-};
+type Attendance = { student_id: string; nis: string; name: string; status: string; checked_in_at: string | null; };
+type Teacher = { id: string; name: string; };
 
-type Teacher = {
-  id: string;
-  name: string;
-};
-
-// Helper untuk mendapatkan tanggal hari ini dalam format YYYY-MM-DD zona WIB
-const getTodayString = () => {
-  const today = new Date();
-  const offset = 7 * 60 * 60 * 1000; // Offset WIB (UTC+7)
-  const wibDate = new Date(today.getTime() + offset);
-  return wibDate.toISOString().split("T")[0];
-};
+const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 
 export default function AttendancePage() {
   const searchParams = useSearchParams();
   const classId = searchParams.get("class_id") || "";
-
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [isValidated, setIsValidated] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [classTeachers, setClassTeachers] = useState<Teacher[]>([]);
   const [selectedValidatorId, setSelectedValidatorId] = useState<string>("");
   const [validatorName, setValidatorName] = useState<string | null>(null);
-
-  // --- STATE BARU UNTUK NAMA KELAS ---
   const [className, setClassName] = useState("");
 
-  // --- FUNGSI FETCH DIPERBARUI UNTUK MENGAMBIL NAMA KELAS ---
-  async function fetchData(date: string) {
+  const fetchData = useCallback(async (date: string) => {
     if (!classId) return;
     setLoading(true);
     try {
@@ -54,136 +32,92 @@ export default function AttendancePage() {
         fetch(`/api/attendance?class_id=${classId}&date=${date}`),
         fetch(`/api/attendance/status?class_id=${classId}&date=${date}`),
         fetch(`/api/classes/${classId}/teachers`),
-        fetch(`/api/classes/${classId}/details`), // <-- Ambil detail kelas
+        fetch(`/api/classes/${classId}/details`),
       ]);
-
       const studentData = await studentRes.json();
       const validationData = await validationRes.json();
       const teachersData = await teachersRes.json();
-      const classData = await classRes.json(); // <-- Data kelas baru
-
+      const classData = await classRes.json();
       setAttendance(Array.isArray(studentData) ? studentData : []);
       setIsValidated(validationData.isValidated || false);
       setValidatorName(validationData.validatorName || null);
       setClassTeachers(Array.isArray(teachersData) ? teachersData : []);
-      setClassName(classData.name || ""); // <-- Set nama kelas
-
+      setClassName(classData.name || "");
     } catch (err) {
       console.error("Gagal memuat data:", err);
-      alert("Gagal memuat data dari server. Silakan coba lagi.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [classId]);
 
   useEffect(() => {
     fetchData(selectedDate);
-  }, [classId, selectedDate]);
+  }, [fetchData, selectedDate]);
   
-  // Fungsi `handleStatusChange` (tidak berubah)
-  async function handleStatusChange(student_id: string, new_status: string) {
-    // ... (kode dari versi Anda sudah benar)
+  const handleStatusChange = useCallback(async (student_id: string, new_status: string) => {
     try {
-        setAttendance(prev => prev.map(s => s.student_id === student_id ? { ...s, status: new_status } : s));
-        const res = await fetch(`/api/attendance/check`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ class_id: classId, student_id, status: new_status, date: selectedDate }),
-        });
-        if (!res.ok) throw new Error("Gagal menyimpan perubahan ke server");
-        await fetchData(selectedDate);
-    } catch (err) {
-        console.error("Gagal update status:", err);
-        alert("Gagal menyimpan perubahan. Memuat ulang data.");
-        fetchData(selectedDate);
+      setAttendance(prev => prev.map(s => s.student_id === student_id ? { ...s, status: new_status } : s));
+      const res = await fetch(`/api/attendance/check`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ class_id: classId, student_id, status: new_status, date: selectedDate }) });
+      if (!res.ok) throw new Error("Gagal menyimpan perubahan ke server");
+      await fetchData(selectedDate);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Terjadi kesalahan";
+      alert(`Gagal menyimpan perubahan: ${message}. Memuat ulang data.`);
+      fetchData(selectedDate);
     }
-  }
+  }, [classId, selectedDate, fetchData]);
 
-  // --- FUNGSI BARU UNTUK MERESET PRESENSI ---
   async function handleReset() {
-    const confirmation = confirm(
-      `Anda yakin ingin mereset seluruh absensi untuk kelas ${className} pada tanggal ${selectedDate}? \n\nSemua status akan kembali menjadi "Belum Hadir".`
-    );
-    if (!confirmation) return;
-
+    if (!confirm(`Reset absensi kelas ${className} tanggal ${selectedDate}?`)) return;
     try {
-      const res = await fetch(`/api/attendance/reset?class_id=${classId}&date=${selectedDate}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/attendance/reset?class_id=${classId}&date=${selectedDate}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal mereset absensi");
-
       alert("Absensi berhasil direset!");
       await fetchData(selectedDate);
-    } catch (err: any) {
-      console.error("Gagal reset:", err);
-      alert(`Terjadi kesalahan: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Terjadi kesalahan";
+      alert(`Gagal mereset: ${message}`);
     }
-  }
-  
-  // Fungsi untuk validasi (tidak berubah)
-  function handleOpenValidationModal() {
-    // ... (kode dari versi Anda sudah benar)
-    if (classTeachers.length === 0) {
-        alert("Tidak dapat validasi. Tidak ada data pengajar yang ditugaskan untuk kelas ini.");
-        return;
-    }
-    setSelectedValidatorId("");
-    setIsValidationModalOpen(true);
   }
 
   async function handleConfirmValidation() {
-    // ... (kode dari versi Anda sudah benar)
-    if (!selectedValidatorId) {
-        alert("Anda harus memilih satu pengajar sebagai validator.");
-        return;
-    }
+    if (!selectedValidatorId) return alert("Pilih validator.");
     try {
-        const res = await fetch(`/api/attendance/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ class_id: classId, date: selectedDate, validator_id: selectedValidatorId }),
-        });
-        if (!res.ok) throw new Error("Gagal memvalidasi");
-        alert("Absensi berhasil divalidasi!");
-        setIsValidationModalOpen(false);
-        await fetchData(selectedDate);
-    } catch (err) {
-        alert("Terjadi kesalahan saat validasi.");
-    }
+      const res = await fetch(`/api/attendance/validate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ class_id: classId, date: selectedDate, validator_id: selectedValidatorId }) });
+      if (!res.ok) throw new Error("Gagal memvalidasi");
+      alert("Absensi berhasil divalidasi!");
+      setIsValidationModalOpen(false);
+      await fetchData(selectedDate);
+    } catch (err) { alert("Terjadi kesalahan saat validasi."); }
   }
 
-  // useEffect untuk scanner (tidak berubah)
   useEffect(() => {
-    // ... (kode dari versi Anda sudah benar)
-    if(isScannerOpen) {
-        const scanner = new Html5QrcodeScanner("qr-reader-container", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-        const onScanSuccess = async (decodedText: string) => {
-            scanner.clear().catch(e=>console.error("Gagal membersihkan scanner", e));
-            setIsScannerOpen(false);
-            try {
-                const qrData = JSON.parse(decodedText);
-                const student = attendance.find(s => s.nis === qrData.nis);
-                if (!student) throw new Error("Siswa tidak ditemukan di kelas ini.");
-                await handleStatusChange(student.student_id, 'Hadir');
-                alert(`Siswa ${qrData.name || ""} berhasil diabsen!`);
-            } catch (err: any) {
-                alert(`Error: ${err.message}`);
-            }
-        };
-        scanner.render(onScanSuccess, () => {});
-        return () => { scanner.clear().catch(e=>console.error("Gagal membersihkan scanner", e)); };
+    if (isScannerOpen) {
+      const scanner = new Html5QrcodeScanner("qr-reader-container", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+      const onScanSuccess = async (decodedText: string) => {
+        scanner.clear().catch(e => console.error(e));
+        setIsScannerOpen(false);
+        try {
+          const qrData = JSON.parse(decodedText);
+          const student = attendance.find(s => s.nis === qrData.nis);
+          if (!student) throw new Error("Siswa tidak ditemukan di kelas ini.");
+          await handleStatusChange(student.student_id, 'Hadir');
+          alert(`Siswa ${qrData.name || ""} berhasil diabsen!`);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Error tidak diketahui";
+          alert(`Error: ${message}`);
+        }
+      };
+      scanner.render(onScanSuccess, () => {});
+      return () => { scanner.clear().catch(e => console.error(e)); };
     }
-  }, [isScannerOpen, attendance]);
+  }, [isScannerOpen, attendance, handleStatusChange]);
 
   const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha"];
 
   return (
     <div className="p-6">
-      {/* --- JUDUL DINAMIS --- */}
-      <h1 className="text-3xl font-bold mb-4">
-        Absensi {className ? `Kelas ${className}` : 'Kelas...'}
-      </h1>
-      
+      <h1 className="text-3xl font-bold mb-4">Absensi {className ? `Kelas ${className}` : 'Kelas...'}</h1>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
         <div>
           <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
@@ -191,16 +125,9 @@ export default function AttendancePage() {
         </div>
         {!isValidated && (
           <div className="flex items-center gap-3">
-            {/* --- TOMBOL RESET BARU --- */}
-            <button
-                onClick={handleReset}
-                className="bg-gray-500 text-white px-5 py-2 rounded-md hover:bg-gray-600 font-semibold disabled:opacity-50"
-                disabled={loading}
-            >
-                Reset
-            </button>
-            <button className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 font-semibold">Simpan Presensi</button>
-            <button onClick={handleOpenValidationModal} className="bg-purple-600 text-white px-5 py-2 rounded-md hover:bg-purple-700 font-semibold" disabled={loading}>Validasi</button>
+            <button onClick={handleReset} className="bg-gray-500 text-white px-5 py-2 rounded-md hover:bg-gray-600 font-semibold" disabled={loading}>Reset</button>
+            <button onClick={async () => {setIsSaving(true); await new Promise(r => setTimeout(r, 500)); setIsSaving(false); alert('Perubahan tersimpan otomatis.');}} className="bg-blue-600 text-white px-5 py-2 rounded-md" disabled={isSaving || loading}>{isSaving ? 'Menyimpan...' : 'Simpan Presensi'}</button>
+            <button onClick={() => setIsValidationModalOpen(true)} className="bg-purple-600 text-white px-5 py-2 rounded-md" disabled={loading}>Validasi</button>
           </div>
         )}
       </div>

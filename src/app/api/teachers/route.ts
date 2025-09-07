@@ -11,14 +11,18 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from("teachers")
-      .select("*") // Ambil semua kolom
+      .select("id, no_induk, name, email") // <-- PERBAIKAN DI SINI: Pilih semua kolom yang diperlukan
       .order("name", { ascending: true }); // Urutkan berdasarkan nama
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
+
     return NextResponse.json(data);
 
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
 
@@ -40,8 +44,8 @@ export async function POST(req: Request) {
     if (error) throw error;
     return NextResponse.json(data, { status: 201 });
 
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
-

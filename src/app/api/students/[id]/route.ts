@@ -6,48 +6,28 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PATCH (update data siswa, dengan prioritas class_id dari query)
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params;
-    const { searchParams } = new URL(request.url);
-    const classIdFromQuery = searchParams.get("class_id");
-
-    const body = await request.json();
-    const finalClassId = classIdFromQuery || body.class_id || null;
-
-    const { data, error } = await supabase
-      .from("students")
-      .update({
-        nis: body.nis,
-        name: body.name, // konsisten
-        gender: body.gender,
-        date_of_birth: body.date_of_birth, // konsisten
-        class_id: finalClassId
-      })
-      .eq("id", id)
-      .select();
-
-    if (error) throw error;
-    return NextResponse.json({ success: true, data });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+    try {
+        const { id } = params;
+        const body = await req.json();
+        const { data, error } = await supabase.from('students').update(body).eq('id', id).select().single();
+        if (error) throw error;
+        return NextResponse.json(data);
+    } catch(error: unknown) {
+        const message = error instanceof Error ? error.message : "Gagal mengedit siswa";
+        return NextResponse.json({ message }, { status: 500 });
+    }
 }
 
-// DELETE (hapus data siswa)
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  try {
-    const { id } = params;
-
-    const { error } = await supabase
-      .from("students")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+    try {
+        const { id } = params;
+        const { error } = await supabase.from('students').delete().eq('id', id);
+        if (error) throw error;
+        return NextResponse.json({ message: "Siswa berhasil dihapus" });
+    } catch(error: unknown) {
+        const message = error instanceof Error ? error.message : "Gagal menghapus siswa";
+        return NextResponse.json({ message }, { status: 500 });
+    }
 }
+

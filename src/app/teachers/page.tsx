@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 // Tipe data untuk satu pengajar
 type Teacher = {
   id: string;
-  no_induk: string;
+  no_induk: string; // Pastikan nama ini cocok dengan kolom di database
   name: string;
   email: string;
 };
@@ -21,19 +21,11 @@ type TeacherFormData = {
 export default function TeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // State untuk mengontrol modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  
-  // State untuk data di dalam form
-  const [formData, setFormData] = useState<TeacherFormData>({
-    no_induk: "",
-    name: "",
-    email: "",
-  });
+  const [formData, setFormData] = useState<TeacherFormData>({ no_induk: "", name: "", email: "" });
 
-  async function fetchTeachers() {
+  const fetchTeachers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/teachers");
@@ -44,11 +36,9 @@ export default function TeachersPage() {
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    fetchTeachers();
   }, []);
+
+  useEffect(() => { fetchTeachers(); }, [fetchTeachers]);
 
   function openModalForAdd() {
     setIsEditMode(false);
@@ -61,29 +51,21 @@ export default function TeachersPage() {
     setFormData(teacher);
     setIsModalOpen(true);
   }
-
+  
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const url = isEditMode ? `/api/teachers/${formData.id}` : "/api/teachers";
     const method = isEditMode ? "PUT" : "POST";
-
     try {
-      const res = await fetch(url, {
-        method: method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) throw new Error(isEditMode ? "Gagal mengedit pengajar" : "Gagal menambah pengajar");
-      
-      setIsModalOpen(false);
-      await fetchTeachers(); // Muat ulang data
-    } catch (error) {
-      // --- PERBAIKAN ERROR DI SINI ---
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("Terjadi kesalahan yang tidak diketahui.");
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Terjadi kesalahan pada server");
       }
+      setIsModalOpen(false);
+      await fetchTeachers();
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Terjadi kesalahan");
     }
   }
 
@@ -91,15 +73,13 @@ export default function TeachersPage() {
     if (!confirm("Yakin ingin menghapus pengajar ini?")) return;
     try {
       const res = await fetch(`/api/teachers/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Gagal menghapus pengajar");
-      await fetchTeachers();
-    } catch (error) {
-      // --- PERBAIKAN ERROR DI SINI ---
-      if (error instanceof Error) {
-        alert(error.message);
-      } else {
-        alert("Terjadi kesalahan yang tidak diketahui.");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Gagal menghapus pengajar");
       }
+      await fetchTeachers();
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Terjadi kesalahan");
     }
   }
 
@@ -115,7 +95,6 @@ export default function TeachersPage() {
         </button>
       </div>
 
-      {/* Modal untuk Tambah/Edit Pengajar */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
@@ -139,21 +118,20 @@ export default function TeachersPage() {
               />
               <input
                 type="email"
-                placeholder="Alamat Email"
+                placeholder="Alamat Email (Opsional)"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="border p-3 w-full rounded-lg"
               />
               <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 bg-gray-300 rounded-lg">Batal</button>
-                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg">{isEditMode ? "Update" : "Simpan"}</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">Batal</button>
+                <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700">{isEditMode ? "Update" : "Simpan"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Tabel daftar pengajar */}
       {loading ? (<p>Memuat data...</p>) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
           <table className="w-full">
@@ -167,13 +145,14 @@ export default function TeachersPage() {
             </thead>
             <tbody>
               {teachers.map((teacher) => (
-                <tr key={teacher.id} className="hover:bg-gray-50 border-b">
+                <tr key={teacher.id} className="hover:bg-gray-50 border-b last:border-b-0">
+                  {/* --- PERBAIKAN DI SINI --- */}
                   <td className="p-4">{teacher.no_induk}</td>
                   <td className="p-4 font-medium">{teacher.name}</td>
-                  <td className="p-4">{teacher.email || "-"}</td>
+                  <td className="p-4 text-gray-600">{teacher.email || "-"}</td>
                   <td className="p-4 text-center space-x-2">
-                    <button onClick={() => openModalForEdit(teacher)} className="px-3 py-1 bg-yellow-500 text-white rounded">Edit</button>
-                    <button onClick={() => handleDelete(teacher.id)} className="px-3 py-1 bg-red-600 text-white rounded">Hapus</button>
+                    <button onClick={() => openModalForEdit(teacher)} className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600">Edit</button>
+                    <button onClick={() => handleDelete(teacher.id)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Hapus</button>
                   </td>
                 </tr>
               ))}
