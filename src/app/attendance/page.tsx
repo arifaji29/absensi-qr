@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
-// Tipe data
 type Attendance = {
   student_id: string;
   nis: string;
@@ -20,7 +19,6 @@ export default function AttendancePage() {
   const searchParams = useSearchParams();
   const classId = searchParams.get("class_id") || "";
 
-  // State Declarations
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(getTodayString());
@@ -43,12 +41,10 @@ export default function AttendancePage() {
         fetch(`/api/classes/${classId}/teachers`),
         fetch(`/api/classes/${classId}/details`),
       ]);
-
       const studentData = await studentRes.json();
       const validationData = await validationRes.json();
       const teachersData = await teachersRes.json();
       const classData = await classRes.json();
-
       setAttendance(Array.isArray(studentData) ? studentData : []);
       setIsValidated(validationData.isValidated || false);
       setValidatorName(validationData.validatorName || null);
@@ -68,11 +64,7 @@ export default function AttendancePage() {
   const handleStatusChange = useCallback(async (student_id: string, new_status: string) => {
     try {
       setAttendance(prev => prev.map(s => s.student_id === student_id ? { ...s, status: new_status } : s));
-      const res = await fetch(`/api/attendance/check`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ class_id: classId, student_id, status: new_status, date: selectedDate }),
-      });
+      const res = await fetch(`/api/attendance/check`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ class_id: classId, student_id, status: new_status, date: selectedDate }), });
       if (!res.ok) throw new Error("Gagal menyimpan perubahan ke server");
       await fetchData(selectedDate);
     } catch (err: unknown) {
@@ -111,11 +103,7 @@ export default function AttendancePage() {
       return;
     }
     try {
-      const res = await fetch(`/api/attendance/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ class_id: classId, date: selectedDate, validator_id: selectedValidatorId }),
-      });
+      const res = await fetch(`/api/attendance/validate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ class_id: classId, date: selectedDate, validator_id: selectedValidatorId }), });
       if (!res.ok) throw new Error("Gagal memvalidasi");
       alert("Absensi berhasil divalidasi!");
       setIsValidationModalOpen(false);
@@ -174,28 +162,9 @@ export default function AttendancePage() {
           </div>
         )}
       </div>
-      {isValidated && (
-        <div className="mb-4 p-3 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-md">
-          <p className="font-bold">Absensi Tervalidasi</p>
-          <p>Presensi ini telah dikunci dan divalidasi oleh <strong>{validatorName || "N/A"}</strong>, dan tidak dapat diubah lagi.</p>
-        </div>
-      )}
+      {isValidated && ( <div className="mb-4 p-3 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-md"><p className="font-bold">Absensi Tervalidasi</p><p>Presensi ini telah dikunci dan divalidasi oleh <strong>{validatorName || "N/A"}</strong>, dan tidak dapat diubah lagi.</p></div> )}
       {!isValidated && !loading && (<button onClick={() => setIsScannerOpen(true)} className="bg-green-600 text-white px-4 py-2 rounded mb-4 hover:bg-green-700 font-semibold text-lg">Scan Presensi</button>)}
-      {isValidationModalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
-          <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-4">Pilih Validator</h2>
-            <p className="text-gray-600 mb-6">Pilih pengajar yang bertanggung jawab.</p>
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {classTeachers.map(teacher => (<label key={teacher.id} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500"><input type="radio" name="validator" value={teacher.id} checked={selectedValidatorId === teacher.id} onChange={(e) => setSelectedValidatorId(e.target.value)} className="h-5 w-5"/><span className="ml-4 font-medium">{teacher.name}</span></label>))}
-            </div>
-            <div className="flex justify-end gap-4 pt-8">
-              <button type="button" onClick={() => setIsValidationModalOpen(false)} className="px-6 py-2 bg-gray-300 rounded-lg">Batal</button>
-              <button onClick={handleConfirmValidation} className="px-6 py-2 bg-purple-600 text-white rounded-lg">Konfirmasi Validasi</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {isValidationModalOpen && ( <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50"><div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md"><h2 className="text-2xl font-bold mb-4">Pilih Validator</h2><p className="text-gray-600 mb-6">Pilih pengajar yang bertanggung jawab.</p><div className="space-y-3 max-h-60 overflow-y-auto">{classTeachers.map(teacher => (<label key={teacher.id} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500"><input type="radio" name="validator" value={teacher.id} checked={selectedValidatorId === teacher.id} onChange={(e) => setSelectedValidatorId(e.target.value)} className="h-5 w-5"/><span className="ml-4 font-medium">{teacher.name}</span></label>))}</div><div className="flex justify-end gap-4 pt-8"><button type="button" onClick={() => setIsValidationModalOpen(false)} className="px-6 py-2 bg-gray-300 rounded-lg">Batal</button><button onClick={handleConfirmValidation} className="px-6 py-2 bg-purple-600 text-white rounded-lg">Konfirmasi Validasi</button></div></div></div> )}
       {isScannerOpen && (<div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50"><div className="bg-white rounded-lg p-4 w-full max-w-sm"><h2 className="text-xl font-bold text-center mb-4">Arahkan Kamera ke QR Code</h2><div id="qr-reader-container"></div><button onClick={() => setIsScannerOpen(false)} className="mt-4 w-full bg-red-600 text-white py-2 rounded hover:bg-red-700">Tutup</button></div></div>)}
       {loading ? (<p>Memuat data...</p>) : (
         <table className="w-full border-collapse border">

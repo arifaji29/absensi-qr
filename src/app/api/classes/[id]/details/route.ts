@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PERBAIKAN: Menggunakan format signature yang benar untuk route dinamis
+// PERBAIKAN FINAL: Menggunakan format context object
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -19,10 +19,7 @@ export async function GET(
       .eq("id", id)
       .single();
 
-    if (error) {
-      // Jika Supabase mengembalikan error (misal: data tidak ditemukan)
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
     
     return NextResponse.json(data);
 

@@ -6,7 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params;
     const { name, teacherIds } = await req.json();
@@ -21,7 +24,11 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       p_teacher_ids: teacherIds
     });
     
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase RPC Error:", error);
+      throw error;
+    }
+
     return NextResponse.json({ message: "Kelas berhasil diperbarui" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan";
@@ -29,7 +36,10 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
     try {
         const { id } = params;
         const { error } = await supabase.from('classes').delete().eq('id', id);
