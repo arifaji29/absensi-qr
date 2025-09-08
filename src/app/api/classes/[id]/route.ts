@@ -8,22 +8,22 @@ const supabase = createClient(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     const { name, teacherIds } = await req.json();
 
     if (!name) {
       return NextResponse.json({ message: "Nama kelas wajib diisi" }, { status: 400 });
     }
 
-    const { error } = await supabase.rpc('update_class_with_teachers', {
+    const { error } = await supabase.rpc("update_class_with_teachers", {
       p_class_id: id,
       p_class_name: name,
-      p_teacher_ids: teacherIds
+      p_teacher_ids: teacherIds,
     });
-    
+
     if (error) {
       console.error("Supabase RPC Error:", error);
       throw error;
@@ -38,16 +38,16 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-    try {
-        const { id } = params;
-        const { error } = await supabase.from('classes').delete().eq('id', id);
-        if (error) throw error;
-        return NextResponse.json({ message: 'Kelas berhasil dihapus' });
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Terjadi kesalahan";
-        return NextResponse.json({ message }, { status: 500 });
-    }
-}
+  try {
+    const { id } = await context.params;
+    const { error } = await supabase.from("classes").delete().eq("id", id);
+    if (error) throw error;
 
+    return NextResponse.json({ message: "Kelas berhasil dihapus" });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}

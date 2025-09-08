@@ -6,23 +6,22 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PERBAIKAN FINAL: Menggunakan format signature yang 100% kompatibel
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    // Destructure params dengan await
+    const { id } = await context.params;
+
     const { data, error } = await supabase
       .from("classes")
       .select("name")
       .eq("id", id)
       .single();
 
-    if (error) {
-      throw new Error(error.message);
-    }
-    
+    if (error) throw new Error(error.message);
+
     return NextResponse.json(data);
 
   } catch (error: unknown) {
@@ -30,4 +29,3 @@ export async function GET(
     return NextResponse.json({ message }, { status: 404 });
   }
 }
-

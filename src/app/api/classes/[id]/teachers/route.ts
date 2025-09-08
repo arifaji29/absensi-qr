@@ -6,29 +6,27 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PERBAIKAN: Tipe data untuk hasil join dari Supabase
 type ClassTeacherLink = {
   teachers: {
     id: string;
     name: string;
-  }[] | null; // teachers adalah ARRAY dari objek guru
+  }[] | null;
 };
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
+
     const { data, error } = await supabase
       .from("class_teachers")
       .select(`teachers (id, name)`)
       .eq("class_id", id);
-      
+
     if (error) throw error;
 
-    // PERBAIKAN: Karena `item.teachers` adalah sebuah array,
-    // kita gunakan flatMap untuk mengekstrak dan meratakan hasilnya menjadi satu array tunggal.
     const teachers = data.flatMap((item: ClassTeacherLink) => item.teachers || []);
 
     return NextResponse.json(teachers);
@@ -38,4 +36,3 @@ export async function GET(
     return NextResponse.json({ message }, { status: 500 });
   }
 }
-

@@ -6,15 +6,30 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     const { no_induk, name, email } = await req.json();
+
     if (!name || !no_induk) {
-      return NextResponse.json({ message: "Nomor Induk dan Nama wajib diisi" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Nomor Induk dan Nama wajib diisi" },
+        { status: 400 }
+      );
     }
-    const { data, error } = await supabase.from("teachers").update({ no_induk, name, email }).eq("id", id).select().single();
+
+    const { data, error } = await supabase
+      .from("teachers")
+      .update({ no_induk, name, email })
+      .eq("id", id)
+      .select()
+      .single();
+
     if (error) throw error;
+
     return NextResponse.json(data);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan";
@@ -22,15 +37,20 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
+
     const { error } = await supabase.from("teachers").delete().eq("id", id);
+
     if (error) throw error;
+
     return NextResponse.json({ message: "Pengajar berhasil dihapus" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan";
     return NextResponse.json({ message }, { status: 500 });
   }
 }
-
