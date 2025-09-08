@@ -248,42 +248,123 @@ export default function StudentsContent() {
         </div>
       )}
 
-      {/* Modal Tambah Siswa */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <form onSubmit={handleAdd} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-2">Tambah Siswa</h2>
-            <input type="text" placeholder="NIS" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} className="border p-2 w-full rounded"/>
-            <input type="text" placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border p-2 w-full rounded" required/>
-            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="border p-2 w-full rounded">
-              <option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option>
-            </select>
-            <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="border p-2 w-full rounded"/>
-            <div className="flex justify-end pt-4 space-x-3">
-              <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded">Batal</button>
-              <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">Simpan</button>
-            </div>
-          </form>
-        </div>
-      )}
+    {/* Modal Tambah Siswa */}
+{showAddModal && (
+  <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+    <form onSubmit={handleAdd} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-2">Tambah Siswa</h2>
+      <input
+        type="text"
+        placeholder="NIS"
+        value={form.nis}
+        onChange={(e) => setForm({ ...form, nis: e.target.value })}
+        className="border p-2 w-full rounded"
+      />
+      <input
+        type="text"
+        placeholder="Nama"
+        value={form.name}
+        onChange={(e) => setForm({ ...form, name: e.target.value })}
+        className="border p-2 w-full rounded"
+        required
+      />
+      <select
+        value={form.gender}
+        onChange={(e) => setForm({ ...form, gender: e.target.value })}
+        className="border p-2 w-full rounded"
+      >
+        <option value="Laki-laki">Laki-laki</option>
+        <option value="Perempuan">Perempuan</option>
+      </select>
 
-      {/* Modal Edit Siswa */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <form onSubmit={handleEdit} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-2">Edit Siswa</h2>
-            <input type="text" placeholder="NIS" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} className="border p-2 w-full rounded"/>
-            <input type="text" placeholder="Nama" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border p-2 w-full rounded" required/>
-            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="border p-2 w-full rounded">
-              <option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option>
-            </select>
-            <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="border p-2 w-full rounded"/>
-            <div className="flex justify-end pt-4 space-x-3">
-              <button type="button" onClick={() => setShowEditModal(false)} className="px-4 py-2 bg-gray-400 text-white rounded">Batal</button>
-              <button type="submit" className="px-4 py-2 bg-yellow-600 text-white rounded">Update</button>
-            </div>
-          </form>
-        </div>
+      {/* Keterangan Tanggal Lahir */}
+      <label className="block text-sm font-medium text-gray-700">
+        Tanggal Lahir
+      </label>
+      <input
+        type="date"
+        value={form.date_of_birth}
+        onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+        className="border p-2 w-full rounded"
+      />
+
+      <div className="flex justify-end pt-4 space-x-3">
+        <button
+          type="button"
+          onClick={() => setShowAddModal(false)}
+          className="px-4 py-2 bg-gray-400 text-white rounded"
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-green-600 text-white rounded"
+        >
+          Simpan
+        </button>
+      </div>
+    </form>
+  </div>
+)}
+
+{/* Modal Edit Siswa */}
+{showEditModal && (
+  <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+    <form onSubmit={handleEdit} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-2">Edit Siswa</h2>
+      <input
+        type="text"
+        placeholder="NIS"
+        value={form.nis}
+        onChange={(e) => setForm({ ...form, nis: e.target.value })}
+        className="border p-2 w-full rounded"
+      />
+      <input
+        type="text"
+        placeholder="Nama"
+        value={form.name}
+        onChange={(e) => setForm({ ...form, name: e.target.value })}
+        className="border p-2 w-full rounded"
+        required
+      />
+      <select
+        value={form.gender}
+        onChange={(e) => setForm({ ...form, gender: e.target.value })}
+        className="border p-2 w-full rounded"
+      >
+        <option value="Laki-laki">Laki-laki</option>
+        <option value="Perempuan">Perempuan</option>
+      </select>
+
+      {/* Keterangan Tanggal Lahir */}
+      <label className="block text-sm font-medium text-gray-700">
+        Tanggal Lahir
+      </label>
+      <input
+        type="date"
+        value={form.date_of_birth}
+        onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+        className="border p-2 w-full rounded"
+      />
+
+      <div className="flex justify-end pt-4 space-x-3">
+        <button
+          type="button"
+          onClick={() => setShowEditModal(false)}
+          className="px-4 py-2 bg-gray-400 text-white rounded"
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-yellow-600 text-white rounded"
+        >
+          Update
+        </button>
+      </div>
+    </form>
+  </div>
+  
       )}
     </div>
   );
