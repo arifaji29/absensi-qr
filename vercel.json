@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/ping.ts": {
-      "runtime": "edge"
-    }
-  },
   "crons": [
     {
       "path": "/api/ping",

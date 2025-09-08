@@ -1,3 +1,5 @@
+export const runtime = "edge"; // gunakan Edge Runtime
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -8,17 +10,14 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    const { data, error } = await supabase.from("attendance_records").select("id").limit(1);
+    // Query sederhana untuk menjaga koneksi tetap aktif
+    const { error } = await supabase.from("teachers").select("id").limit(1);
     if (error) throw error;
 
-    return NextResponse.json({
-      success: true,
-      message: "Ping sukses, Supabase tetap aktif",
-      checked: data?.length ?? 0,
-    });
-  } catch (err) {
+    return NextResponse.json({ success: true, message: "Supabase pinged!" });
+  } catch (error) {
     return NextResponse.json(
-      { success: false, message: err instanceof Error ? err.message : "Ping gagal" },
+      { success: false, message: (error as Error).message },
       { status: 500 }
     );
   }
