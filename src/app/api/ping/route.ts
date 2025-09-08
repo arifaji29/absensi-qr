@@ -1,29 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Pakai anon key saja (aman untuk public)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function GET() {
   try {
-    // Query ringan (misal cek tabel public yang selalu ada, atau pilih 1 record saja)
-    const { data, error } = await supabase
-      .from("students") // ganti dengan tabel yang pasti ada
-      .select("id")
-      .limit(1);
-
+    const { data, error } = await supabase.from("attendance_records").select("id").limit(1);
     if (error) throw error;
 
     return NextResponse.json({
-      message: "Supabase is alive!",
-      timestamp: new Date().toISOString(),
-      data: data?.length ? "Connected" : "No data (but alive)",
+      success: true,
+      message: "Ping sukses, Supabase tetap aktif",
+      checked: data?.length ?? 0,
     });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Terjadi kesalahan";
-    return NextResponse.json({ message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, message: err instanceof Error ? err.message : "Ping gagal" },
+      { status: 500 }
+    );
   }
 }
