@@ -5,20 +5,22 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import { createRoot } from "react-dom/client";
+import { ArrowLeft, Home, Plus } from "lucide-react";
+
 
 // Tipe data
-type Student = { 
-  id: string; 
-  nis: string; 
-  name: string; 
-  gender: string; 
-  date_of_birth: string | null; 
-  class_id?: string | null; 
+type Student = {
+  id: string;
+  nis: string;
+  name: string;
+  gender: string;
+  date_of_birth: string | null;
+  class_id?: string | null;
 };
 
-type Class = { 
-  id: string; 
-  name: string; 
+type Class = {
+  id: string;
+  name: string;
 };
 
 export default function StudentsContent() {
@@ -79,8 +81,8 @@ export default function StudentsContent() {
     }
   }, [activeClassId, classIdFromUrl]);
 
-  useEffect(() => { 
-    loadData(); 
+  useEffect(() => {
+    loadData();
   }, [loadData]);
 
   const resetForm = useCallback(() => {
@@ -133,9 +135,9 @@ export default function StudentsContent() {
   const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/students", { 
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
+      const res = await fetch("/api/students", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, class_id: activeClassId }),
       });
       if (!res.ok) throw new Error("Gagal menambah siswa");
@@ -152,9 +154,9 @@ export default function StudentsContent() {
     e.preventDefault();
     if (!editingId) return;
     try {
-      const res = await fetch(`/api/students/${editingId}`, { 
-        method: "PATCH", 
-        headers: { "Content-Type": "application/json" }, 
+      const res = await fetch(`/api/students/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error("Gagal mengedit siswa");
@@ -207,10 +209,33 @@ export default function StudentsContent() {
 
       {classIdFromUrl && (
         <div className="flex gap-3 mb-6">
+          {/* Tombol Back */}
           <Link href="/classes">
-            <button className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Kembali ke Kelas</button>
+            <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+              <ArrowLeft size={18} />
+              <span>Back</span>
+            </button>
           </Link>
-          <button onClick={() => { resetForm(); setShowAddModal(true); }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Tambah Siswa</button>
+
+          {/* Tombol Home */}
+          <Link href="/">
+            <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+              <Home size={18} />
+              <span>Home</span>
+            </button>
+          </Link>
+
+          {/* Tombol Tambah Siswa */}
+          <button
+            onClick={() => {
+              resetForm();
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            <Plus size={18} />
+            <span>Tambah Siswa</span>
+          </button>
         </div>
       )}
 
@@ -248,123 +273,123 @@ export default function StudentsContent() {
         </div>
       )}
 
-    {/* Modal Tambah Siswa */}
-{showAddModal && (
-  <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-    <form onSubmit={handleAdd} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-2">Tambah Siswa</h2>
-      <input
-        type="text"
-        placeholder="NIS"
-        value={form.nis}
-        onChange={(e) => setForm({ ...form, nis: e.target.value })}
-        className="border p-2 w-full rounded"
-      />
-      <input
-        type="text"
-        placeholder="Nama"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        className="border p-2 w-full rounded"
-        required
-      />
-      <select
-        value={form.gender}
-        onChange={(e) => setForm({ ...form, gender: e.target.value })}
-        className="border p-2 w-full rounded"
-      >
-        <option value="Laki-laki">Laki-laki</option>
-        <option value="Perempuan">Perempuan</option>
-      </select>
+      {/* Modal Tambah Siswa */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <form onSubmit={handleAdd} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-2">Tambah Siswa</h2>
+            <input
+              type="text"
+              placeholder="NIS"
+              value={form.nis}
+              onChange={(e) => setForm({ ...form, nis: e.target.value })}
+              className="border p-2 w-full rounded"
+            />
+            <input
+              type="text"
+              placeholder="Nama"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="border p-2 w-full rounded"
+              required
+            />
+            <select
+              value={form.gender}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              className="border p-2 w-full rounded"
+            >
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
 
-      {/* Keterangan Tanggal Lahir */}
-      <label className="block text-sm font-medium text-gray-700">
-        Tanggal Lahir
-      </label>
-      <input
-        type="date"
-        value={form.date_of_birth}
-        onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-        className="border p-2 w-full rounded"
-      />
+            {/* Keterangan Tanggal Lahir */}
+            <label className="block text-sm font-medium text-gray-700">
+              Tanggal Lahir
+            </label>
+            <input
+              type="date"
+              value={form.date_of_birth}
+              onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+              className="border p-2 w-full rounded"
+            />
 
-      <div className="flex justify-end pt-4 space-x-3">
-        <button
-          type="button"
-          onClick={() => setShowAddModal(false)}
-          className="px-4 py-2 bg-gray-400 text-white rounded"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-green-600 text-white rounded"
-        >
-          Simpan
-        </button>
-      </div>
-    </form>
-  </div>
-)}
+            <div className="flex justify-end pt-4 space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 bg-gray-400 text-white rounded"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-green-600 text-white rounded"
+              >
+                Simpan
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
-{/* Modal Edit Siswa */}
-{showEditModal && (
-  <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-    <form onSubmit={handleEdit} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-2">Edit Siswa</h2>
-      <input
-        type="text"
-        placeholder="NIS"
-        value={form.nis}
-        onChange={(e) => setForm({ ...form, nis: e.target.value })}
-        className="border p-2 w-full rounded"
-      />
-      <input
-        type="text"
-        placeholder="Nama"
-        value={form.name}
-        onChange={(e) => setForm({ ...form, name: e.target.value })}
-        className="border p-2 w-full rounded"
-        required
-      />
-      <select
-        value={form.gender}
-        onChange={(e) => setForm({ ...form, gender: e.target.value })}
-        className="border p-2 w-full rounded"
-      >
-        <option value="Laki-laki">Laki-laki</option>
-        <option value="Perempuan">Perempuan</option>
-      </select>
+      {/* Modal Edit Siswa */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <form onSubmit={handleEdit} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-2">Edit Siswa</h2>
+            <input
+              type="text"
+              placeholder="NIS"
+              value={form.nis}
+              onChange={(e) => setForm({ ...form, nis: e.target.value })}
+              className="border p-2 w-full rounded"
+            />
+            <input
+              type="text"
+              placeholder="Nama"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="border p-2 w-full rounded"
+              required
+            />
+            <select
+              value={form.gender}
+              onChange={(e) => setForm({ ...form, gender: e.target.value })}
+              className="border p-2 w-full rounded"
+            >
+              <option value="Laki-laki">Laki-laki</option>
+              <option value="Perempuan">Perempuan</option>
+            </select>
 
-      {/* Keterangan Tanggal Lahir */}
-      <label className="block text-sm font-medium text-gray-700">
-        Tanggal Lahir
-      </label>
-      <input
-        type="date"
-        value={form.date_of_birth}
-        onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-        className="border p-2 w-full rounded"
-      />
+            {/* Keterangan Tanggal Lahir */}
+            <label className="block text-sm font-medium text-gray-700">
+              Tanggal Lahir
+            </label>
+            <input
+              type="date"
+              value={form.date_of_birth}
+              onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+              className="border p-2 w-full rounded"
+            />
 
-      <div className="flex justify-end pt-4 space-x-3">
-        <button
-          type="button"
-          onClick={() => setShowEditModal(false)}
-          className="px-4 py-2 bg-gray-400 text-white rounded"
-        >
-          Batal
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-yellow-600 text-white rounded"
-        >
-          Update
-        </button>
-      </div>
-    </form>
-  </div>
-  
+            <div className="flex justify-end pt-4 space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 bg-gray-400 text-white rounded"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-yellow-600 text-white rounded"
+              >
+                Update
+              </button>
+            </div>
+          </form>
+        </div>
+
       )}
     </div>
   );

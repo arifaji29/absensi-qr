@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Link from "next/link";
+import { ArrowLeft, Home, Plus } from "lucide-react";
 
 type Teacher = { id: string; no_induk: string; name: string; email: string; };
 type TeacherFormData = { id?: string; no_induk: string; name: string; email: string; };
@@ -40,7 +42,7 @@ export default function TeachersPage() {
     setFormData(teacher);
     setIsModalOpen(true);
   }
-  
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const url = isEditMode ? `/api/teachers/${formData.id}` : "/api/teachers";
@@ -76,9 +78,33 @@ export default function TeachersPage() {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Manajemen Pengajar</h1>
-        <button onClick={openModalForAdd} className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold">
-          + Tambah Pengajar
-        </button>
+
+        <div className="flex items-center gap-3">
+          {/* Tombol Back */}
+          <Link href="/">
+            <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+              <ArrowLeft size={18} />
+              <span>Back</span>
+            </button>
+          </Link>
+
+          {/* Tombol Home */}
+          <Link href="/">
+            <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+              <Home size={18} />
+              <span>Home</span>
+            </button>
+          </Link>
+
+          {/* Tombol Tambah Pengajar */}
+          <button
+            onClick={openModalForAdd}
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold"
+          >
+            <Plus size={18} />
+            <span>Tambah Pengajar</span>
+          </button>
+        </div>
       </div>
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { ArrowLeft, Home } from "lucide-react";
 import Link from "next/link";
 
 type Teacher = { id: string; name: string; };
@@ -10,18 +11,18 @@ export default function ClassesPage() {
   const [classes, setClasses] = useState<ClassWithTeachers[]>([]);
   const [allTeachers, setAllTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
-  
+
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassWithTeachers | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [classRes, teacherRes] = await Promise.all([ fetch("/api/classes"), fetch("/api/teachers") ]);
+      const [classRes, teacherRes] = await Promise.all([fetch("/api/classes"), fetch("/api/teachers")]);
       if (!classRes.ok || !teacherRes.ok) throw new Error("Gagal memuat data");
       setClasses(await classRes.json());
       setAllTeachers(await teacherRes.json());
@@ -92,15 +93,15 @@ export default function ClassesPage() {
       alert(error instanceof Error ? error.message : "Terjadi kesalahan saat menghapus kelas.");
     }
   }
-  
+
   function handleTeacherSelection(teacherId: string) {
     setSelectedTeacherIds(prev => {
       if (prev.includes(teacherId)) {
         return prev.filter(id => id !== teacherId);
       } else {
         if (prev.length >= 3) {
-            alert("Maksimal 3 pengajar per kelas.");
-            return prev;
+          alert("Maksimal 3 pengajar per kelas.");
+          return prev;
         }
         return [...prev, teacherId];
       }
@@ -109,11 +110,36 @@ export default function ClassesPage() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Manajemen Kelas</h1>
-        <button onClick={openAddModal} className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold">
-          + Tambah Kelas Baru
-        </button>
+      <h1 className="text-3xl font-bold">Manajemen Kelas</h1>
+      <div className="p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-3">
+          {/* Grup tombol navigasi */}
+          <div className="flex flex-wrap gap-3">
+            {/* Tombol Back */}
+            <Link href="/">
+              <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 w-full sm:w-auto justify-center">
+                <ArrowLeft size={18} />
+                <span>Back</span>
+              </button>
+            </Link>
+
+            {/* Tombol Home */}
+            <Link href="/">
+              <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto justify-center">
+                <Home size={18} />
+                <span>Home</span>
+              </button>
+            </Link>
+          </div>
+
+          {/* Tombol Tambah */}
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold w-full sm:w-auto justify-center"
+          >
+            + Tambah Kelas Baru
+          </button>
+        </div>
       </div>
 
       {showAddModal && (
@@ -170,25 +196,25 @@ export default function ClassesPage() {
 
       {loading ? (<p>Memuat data...</p>) : (
         <div className="overflow-x-auto bg-white rounded-lg shadow">
-            <table className="w-full">
+          <table className="w-full">
             <thead className="bg-gray-100">
-                <tr><th className="p-4 text-left">Kelas</th><th className="p-4 text-left">Pengajar</th><th className="p-4 text-center">Aksi</th></tr>
+              <tr><th className="p-4 text-left">Kelas</th><th className="p-4 text-left">Pengajar</th><th className="p-4 text-center">Aksi</th></tr>
             </thead>
             <tbody>
-                {classes.map((cls) => (
+              {classes.map((cls) => (
                 <tr key={cls.id} className="hover:bg-gray-50 border-b">
-                    <td className="p-4 font-medium">{cls.name}</td>
-                    <td className="p-4">{cls.teachers.length > 0 ? cls.teachers.map(t => t.name).join(', ') : "-"}</td>
-                    <td className="p-4 text-center space-x-2">
-                        <Link href={`/students?class_id=${cls.id}`}><button className="px-3 py-1 bg-blue-600 text-white rounded">Daftar Siswa</button></Link>
-                        <Link href={`/attendance?class_id=${cls.id}`}><button className="px-3 py-1 bg-green-500 text-white rounded">Presensi</button></Link>
-                        <button onClick={() => openEditModal(cls)} className="px-3 py-1 bg-yellow-500 text-white rounded">Edit</button>
-                        <button onClick={() => handleDelete(cls.id)} className="px-3 py-1 bg-red-600 text-white rounded">Hapus</button>
-                    </td>
+                  <td className="p-4 font-medium">{cls.name}</td>
+                  <td className="p-4">{cls.teachers.length > 0 ? cls.teachers.map(t => t.name).join(', ') : "-"}</td>
+                  <td className="p-4 text-center space-x-2">
+                    <Link href={`/students?class_id=${cls.id}`}><button className="px-3 py-1 bg-blue-600 text-white rounded">Daftar Siswa</button></Link>
+                    <Link href={`/attendance?class_id=${cls.id}`}><button className="px-3 py-1 bg-green-500 text-white rounded">Presensi</button></Link>
+                    <button onClick={() => openEditModal(cls)} className="px-3 py-1 bg-yellow-500 text-white rounded">Edit</button>
+                    <button onClick={() => handleDelete(cls.id)} className="px-3 py-1 bg-red-600 text-white rounded">Hapus</button>
+                  </td>
                 </tr>
-                ))}
+              ))}
             </tbody>
-            </table>
+          </table>
         </div>
       )}
     </div>

@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import Link from "next/link";
+import { ArrowLeft, Home, QrCode } from "lucide-react";
 
 type Attendance = {
   student_id: string;
@@ -180,13 +182,12 @@ export default function AttendanceContent() {
           alert(`Siswa ${qrData.name || ""} berhasil diabsen!`);
         } catch (err) {
           alert(
-            `Error: ${
-              err instanceof Error ? err.message : "Unknown error"
+            `Error: ${err instanceof Error ? err.message : "Unknown error"
             }`
           );
         }
       };
-      scanner.render(onScanSuccess, () => {});
+      scanner.render(onScanSuccess, () => { });
       return () => {
         scanner.clear().catch((e) => console.error(e));
       };
@@ -265,12 +266,32 @@ export default function AttendanceContent() {
       )}
 
       {!isValidated && !loading && (
-        <button
-          onClick={() => setIsScannerOpen(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded mb-4 hover:bg-green-700 font-semibold text-lg"
-        >
-          Scan Presensi
-        </button>
+        <div className="flex items-center gap-3 mb-4">
+          {/* Tombol Back */}
+          <Link href="/classes">
+            <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+              <ArrowLeft size={18} />
+              <span>Back</span>
+            </button>
+          </Link>
+
+          {/* Tombol Home */}
+          <Link href="/">
+            <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+              <Home size={18} />
+              <span>Home</span>
+            </button>
+          </Link>
+
+          {/* Tombol Scan Presensi */}
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-green-700 font-semibold text-lg"
+          >
+            <QrCode size={20} />
+            <span>Scan Presensi</span>
+          </button>
+        </div>
       )}
 
       {/* Modal Validasi */}
@@ -357,8 +378,8 @@ export default function AttendanceContent() {
                   a.status === "Hadir"
                     ? "bg-green-100"
                     : a.status !== "Belum Hadir"
-                    ? "bg-yellow-100"
-                    : ""
+                      ? "bg-yellow-100"
+                      : ""
                 }
               >
                 <td className="border p-2">{a.nis}</td>
@@ -366,24 +387,28 @@ export default function AttendanceContent() {
                 <td className="border p-2">
                   <select
                     value={a.status}
-                    onChange={(e) =>
-                      handleStatusChange(a.student_id, e.target.value)
-                    }
+                    onChange={(e) => handleStatusChange(a.student_id, e.target.value)}
                     className="w-full p-2 border rounded bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                     disabled={isValidated}
                   >
-                    {statusOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
+                    {statusOptions.map((opt) => {
+                      // "Hadir" hanya ditampilkan kalau memang statusnya sudah Hadir
+                      if (opt === "Hadir" && a.status !== "Hadir") {
+                        return null;
+                      }
+                      return (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      );
+                    })}
                   </select>
                 </td>
                 <td className="border p-2">
                   {a.checked_in_at
                     ? new Date(a.checked_in_at).toLocaleTimeString("id-ID", {
-                        timeZone: "Asia/Jakarta",
-                      })
+                      timeZone: "Asia/Jakarta",
+                    })
                     : "-"}
                 </td>
               </tr>
@@ -391,6 +416,8 @@ export default function AttendanceContent() {
           </tbody>
         </table>
       )}
+
+
     </div>
   );
 }
