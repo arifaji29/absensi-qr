@@ -268,7 +268,7 @@ export default function AttendanceContent() {
       {!isValidated && !loading && (
         <div className="flex items-center gap-3 mb-4">
           {/* Tombol Back */}
-          <Link href="/classes">
+          <Link href="/dashboard-attendance">
             <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
               <ArrowLeft size={18} />
               <span>Back</span>
@@ -277,7 +277,7 @@ export default function AttendanceContent() {
 
           {/* Tombol Home */}
           <Link href="/">
-            <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-blue-700">
               <Home size={18} />
               <span>Home</span>
             </button>

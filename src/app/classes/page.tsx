@@ -125,7 +125,7 @@ export default function ClassesPage() {
 
             {/* Tombol Home */}
             <Link href="/">
-              <button className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto justify-center">
+              <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700 w-full sm:w-auto justify-center">
                 <Home size={18} />
                 <span>Home</span>
               </button>
@@ -206,8 +206,6 @@ export default function ClassesPage() {
                   <td className="p-4 font-medium">{cls.name}</td>
                   <td className="p-4">{cls.teachers.length > 0 ? cls.teachers.map(t => t.name).join(', ') : "-"}</td>
                   <td className="p-4 text-center space-x-2">
-                    <Link href={`/students?class_id=${cls.id}`}><button className="px-3 py-1 bg-blue-600 text-white rounded">Daftar Siswa</button></Link>
-                    <Link href={`/attendance?class_id=${cls.id}`}><button className="px-3 py-1 bg-green-500 text-white rounded">Presensi</button></Link>
                     <button onClick={() => openEditModal(cls)} className="px-3 py-1 bg-yellow-500 text-white rounded">Edit</button>
                     <button onClick={() => handleDelete(cls.id)} className="px-3 py-1 bg-red-600 text-white rounded">Hapus</button>
                   </td>
