@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Link from "next/link";
@@ -39,6 +39,18 @@ export default function AttendanceContent() {
   const [selectedValidatorId, setSelectedValidatorId] = useState<string>("");
   const [validatorName, setValidatorName] = useState<string | null>(null);
   const [className, setClassName] = useState("");
+
+  // Referensi untuk elemen audio
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Inisialisasi Audio object hanya sekali saat komponen dimuat di sisi client
+  useEffect(() => {
+    audioRef.current = new Audio("/success-sound.mp3"); // Pastikan file ada di public/success-sound.mp3
+    // Mengatur volume audio (opsional, nilai antara 0.0 sampai 1.0)
+    if (audioRef.current) {
+        audioRef.current.volume = 0.5; // Misalnya, set volume ke 50%
+    }
+  }, []);
 
   const fetchData = useCallback(
     async (date: string) => {
@@ -178,16 +190,28 @@ export default function AttendanceContent() {
           const qrData = JSON.parse(decodedText);
           const student = attendance.find((s) => s.nis === qrData.nis);
           if (!student) throw new Error("Siswa tidak ditemukan di kelas ini.");
+          
           await handleStatusChange(student.student_id, "Hadir");
+          
           alert(`Siswa ${qrData.name || ""} berhasil diabsen!`);
+          // Putar audio jika absensi berhasil
+          if (audioRef.current) {
+            audioRef.current.play().catch(error => {
+              console.error("Audio play failed:", error);
+              // Handle case where user hasn't interacted with the document yet
+              // For example, display a message asking them to click anywhere
+            });
+          }
+
         } catch (err) {
           alert(
-            `Error: ${err instanceof Error ? err.message : "Unknown error"
+            `Error: ${
+              err instanceof Error ? err.message : "Unknown error"
             }`
           );
         }
       };
-      scanner.render(onScanSuccess, () => { });
+      scanner.render(onScanSuccess, () => {});
       return () => {
         scanner.clear().catch((e) => console.error(e));
       };
@@ -306,7 +330,7 @@ export default function AttendanceContent() {
               {classTeachers.map((teacher) => (
                 <label
                   key={teacher.id}
-                  className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500"
+                  className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has:checked:border-blue-500"
                 >
                   <input
                     type="radio"
@@ -324,7 +348,7 @@ export default function AttendanceContent() {
               <button
                 type="button"
                 onClick={() => setIsValidationModalOpen(false)}
-                className="px-6 py-2 bg-gray-300 rounded-lg"
+                className="px-6 py-2 bg-red-600 text-white rounded-lg"
               >
                 Batal
               </button>
@@ -378,8 +402,8 @@ export default function AttendanceContent() {
                   a.status === "Hadir"
                     ? "bg-green-100"
                     : a.status !== "Belum Hadir"
-                      ? "bg-yellow-100"
-                      : ""
+                    ? "bg-yellow-100"
+                    : ""
                 }
               >
                 <td className="border p-2">{a.nis}</td>
@@ -407,8 +431,8 @@ export default function AttendanceContent() {
                 <td className="border p-2">
                   {a.checked_in_at
                     ? new Date(a.checked_in_at).toLocaleTimeString("id-ID", {
-                      timeZone: "Asia/Jakarta",
-                    })
+                        timeZone: "Asia/Jakarta",
+                      })
                     : "-"}
                 </td>
               </tr>
@@ -416,8 +440,6 @@ export default function AttendanceContent() {
           </tbody>
         </table>
       )}
-
-
     </div>
   );
 }
