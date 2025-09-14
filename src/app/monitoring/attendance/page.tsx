@@ -20,7 +20,7 @@ const monthNames = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-// --- FUNGSI BARU UNTUK FORMAT TANGGAL ---
+// Format tanggal ke yyyy-mm-dd
 const formatDateToYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -42,36 +42,40 @@ export default function AttendanceMonitoringContent() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
-  const fetchData = useCallback(async (startDate: string, endDate: string) => {
-    if (!classId) return;
-    setLoading(true);
+  // Ambil data monitoring
+  const fetchData = useCallback(
+    async (startDate: string, endDate: string) => {
+      if (!classId) return;
+      setLoading(true);
 
-    const dates: string[] = [];
-    // pakai let karena diubah tiap iterasi
-    let currentDate = new Date(startDate);
-    const finalDate = new Date(endDate);
+      // Generate list tanggal
+      const dates: string[] = [];
+      const start = new Date(startDate);
+      const finalDate = new Date(endDate);
 
-    while (currentDate <= finalDate) {
-      dates.push(formatDateToYYYYMMDD(currentDate));
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    setDateHeaders(dates);
+      for (let d = new Date(start); d <= finalDate; d.setDate(d.getDate() + 1)) {
+        dates.push(formatDateToYYYYMMDD(new Date(d)));
+      }
+      setDateHeaders(dates);
 
-    try {
-      const res = await fetch(
-        `/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`
-      );
-      if (!res.ok) throw new Error("Gagal mengambil data dari server");
-      const data: MonitoringData[] = await res.json();
-      setMonitoringData(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Gagal memuat data monitoring:", error);
-      setMonitoringData([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [classId]);
+      try {
+        const res = await fetch(
+          `/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`
+        );
+        if (!res.ok) throw new Error("Gagal mengambil data dari server");
+        const data: MonitoringData[] = await res.json();
+        setMonitoringData(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Gagal memuat data monitoring:", error);
+        setMonitoringData([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [classId]
+  );
 
+  // Ambil detail kelas
   useEffect(() => {
     const fetchClassDetails = async () => {
       if (!classId) return;
@@ -86,6 +90,7 @@ export default function AttendanceMonitoringContent() {
     fetchClassDetails();
   }, [classId]);
 
+  // Update data saat filter berubah
   useEffect(() => {
     let startDate: string;
     let endDate: string;
@@ -105,13 +110,19 @@ export default function AttendanceMonitoringContent() {
     fetchData(startDate, endDate);
   }, [filterMode, selectedMonth, selectedYear, fetchData]);
 
+  // Warna status
   const getStatusColor = (status: AttendanceStatus) => {
     switch (status.toLowerCase()) {
-      case "hadir": return "bg-green-100 text-green-800";
-      case "sakit": return "bg-red-100 text-red-800 font-bold";
-      case "izin": return "bg-yellow-100 text-yellow-800";
-      case "alpha": return "bg-gray-200 text-gray-700";
-      default: return "bg-white";
+      case "hadir":
+        return "bg-green-100 text-green-800";
+      case "sakit":
+        return "bg-red-100 text-red-800 font-bold";
+      case "izin":
+        return "bg-yellow-100 text-yellow-800";
+      case "alpha":
+        return "bg-gray-200 text-gray-700";
+      default:
+        return "bg-white";
     }
   };
 
@@ -121,6 +132,7 @@ export default function AttendanceMonitoringContent() {
         Monitoring Kehadiran {className ? `Kelas ${className}` : "..."}
       </h1>
 
+      {/* Filter */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border items-center">
         <div className="flex items-center gap-2">
           <label className="font-medium whitespace-nowrap">Tampilkan Data:</label>
@@ -142,7 +154,9 @@ export default function AttendanceMonitoringContent() {
               className="w-full p-2 border rounded-md bg-white"
             >
               {monthNames.map((name, index) => (
-                <option key={index} value={index}>{name}</option>
+                <option key={index} value={index}>
+                  {name}
+                </option>
               ))}
             </select>
             <select
@@ -150,8 +164,10 @@ export default function AttendanceMonitoringContent() {
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className="w-full p-2 border rounded-md bg-white"
             >
-              {Array.from({ length: 5 }, (_, i) => currentYear - i).map(year => (
-                <option key={year} value={year}>{year}</option>
+              {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
               ))}
             </select>
           </div>
@@ -173,6 +189,7 @@ export default function AttendanceMonitoringContent() {
         </div>
       </div>
 
+      {/* Tabel */}
       {loading ? (
         <p>Memuat data...</p>
       ) : (
@@ -180,7 +197,9 @@ export default function AttendanceMonitoringContent() {
           <table className="min-w-full border-collapse border">
             <thead className="bg-gray-100 sticky top-0 z-10">
               <tr>
-                <th className="border p-2 text-left sticky left-0 bg-gray-100 z-20">Nama Siswa</th>
+                <th className="border p-2 text-left sticky left-0 bg-gray-100 z-20">
+                  Nama Siswa
+                </th>
                 {dateHeaders.map((date) => (
                   <th key={date} className="border p-2 whitespace-nowrap">
                     {new Date(date).toLocaleDateString("id-ID", {
@@ -215,10 +234,7 @@ export default function AttendanceMonitoringContent() {
                 ))
               ) : (
                 <tr>
-                  <td
-                    colSpan={dateHeaders.length + 1}
-                    className="text-center p-4"
-                  >
+                  <td colSpan={dateHeaders.length + 1} className="text-center p-4">
                     Tidak ada data siswa untuk ditampilkan pada rentang waktu ini.
                   </td>
                 </tr>
