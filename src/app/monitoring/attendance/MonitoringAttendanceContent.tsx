@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Download } from "lucide-react";
+import { ArrowLeft, Home, Download, RefreshCw } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -39,9 +39,9 @@ export default function AttendanceMonitoringContent() {
   const [className, setClassName] = useState("");
   const [dateHeaders, setDateHeaders] = useState<string[]>([]);
 
-  const [filterMode, setFilterMode] = useState<"last7days" | "monthly">("monthly");
-  const currentYear = new Date().getFullYear();
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   // Ambil data monitoring
@@ -50,7 +50,6 @@ export default function AttendanceMonitoringContent() {
       if (!classId) return;
       setLoading(true);
 
-      // Generate list tanggal
       const dates: string[] = [];
       const start = new Date(startDate);
       const finalDate = new Date(endDate);
@@ -93,27 +92,17 @@ export default function AttendanceMonitoringContent() {
     fetchClassDetails();
   }, [classId]);
 
-  // Update data saat filter berubah
-  useEffect(() => {
-    let startDate: string;
-    let endDate: string;
-
-    if (filterMode === "last7days") {
-      const today = new Date();
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(today.getDate() - 6);
-
-      startDate = formatDateToYYYYMMDD(sevenDaysAgo);
-      endDate = formatDateToYYYYMMDD(today);
-    } else {
-      startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
-      endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
-    }
-
+  // Update data saat bulan / tahun berubah
+  const loadData = useCallback(() => {
+    const startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
+    const endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
     fetchData(startDate, endDate);
-  }, [filterMode, selectedMonth, selectedYear, fetchData]);
+  }, [selectedMonth, selectedYear, fetchData]);
 
-  // Warna status
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
   const getStatusColor = (status: AttendanceStatus) => {
     switch (status.toLowerCase()) {
       case "hadir":
@@ -132,11 +121,8 @@ export default function AttendanceMonitoringContent() {
   // Export ke Excel
   const handleDownloadExcel = () => {
     const worksheetData: (string | number)[][] = [];
-
-    // Header
     worksheetData.push(["Nama Siswa", ...dateHeaders]);
 
-    // Data siswa
     monitoringData.forEach((student) => {
       const row: (string | number)[] = [student.name];
       dateHeaders.forEach((date) => {
@@ -150,14 +136,16 @@ export default function AttendanceMonitoringContent() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi");
 
-    XLSX.writeFile(workbook, `Absensi_${className || "kelas"}.xlsx`);
+    const bulan = monthNames[selectedMonth];
+    const tahun = selectedYear;
+    const namaFile = `Absensi_${className || "kelas"}_${bulan}_${tahun}.xlsx`;
+
+    XLSX.writeFile(workbook, namaFile);
   };
 
-  //DOWNLOAD pdf
+  // Export ke PDF (landscape + kolom nama lebih lebar)
   const handleDownloadPDF = () => {
-    const doc = new jsPDF();
-
-    // Kolom tabel
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const tableColumn: string[] = ["Nama Siswa", ...dateHeaders];
     const tableRows: (string | number)[][] = [];
 
@@ -170,19 +158,25 @@ export default function AttendanceMonitoringContent() {
       tableRows.push(rowData);
     });
 
-    // Judul
-    doc.text(`Laporan Kehadiran ${className ? `Kelas ${className}` : ""}`, 14, 15);
+    const bulan = monthNames[selectedMonth];
+    const tahun = selectedYear;
+    const judul = `Laporan Kehadiran ${className ? `Kelas ${className}` : ""} - ${bulan} ${tahun}`;
+    const namaFile = `Absensi_${className || "kelas"}_${bulan}_${tahun}.pdf`;
 
-    // Gunakan autoTable dengan cara yang benar
+    doc.text(judul, 14, 15);
+
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 25,
-      styles: { fontSize: 8 },
+      styles: { fontSize: 6 },
       headStyles: { fillColor: [66, 66, 66] },
+      columnStyles: {
+        0: { cellWidth: 20 }, // kolom nama siswa lebih lebar
+      },
     });
 
-    doc.save(`Absensi_${className || "kelas"}.pdf`);
+    doc.save(namaFile);
   };
 
   return (
@@ -191,48 +185,41 @@ export default function AttendanceMonitoringContent() {
         Monitoring Kehadiran {className ? `Kelas ${className}` : "..."}
       </h1>
 
-      {/* Filter */}
+      {/* Pilih bulan & tahun + tombol aksi */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border items-center">
         <div className="flex items-center gap-2">
-          <label className="font-medium whitespace-nowrap">Tampilkan Data:</label>
           <select
-            value={filterMode}
-            onChange={(e) => setFilterMode(e.target.value as "last7days" | "monthly")}
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(Number(e.target.value))}
             className="w-full p-2 border rounded-md bg-white"
           >
-            <option value="last7days">7 Hari Terakhir</option>
-            <option value="monthly">Per Bulan</option>
+            {monthNames.map((name, index) => (
+              <option key={index} value={index}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="w-full p-2 border rounded-md bg-white"
+          >
+            {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
           </select>
         </div>
 
-        {filterMode === "monthly" && (
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="w-full p-2 border rounded-md bg-white"
-            >
-              {monthNames.map((name, index) => (
-                <option key={index} value={index}>
-                  {name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full p-2 border rounded-md bg-white"
-            >
-              {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="flex items-center gap-3 lg:justify-end flex-wrap">
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+          >
+            <RefreshCw size={18} />
+            <span>Refresh</span>
+          </button>
           <button
             onClick={handleDownloadExcel}
             className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
@@ -308,7 +295,7 @@ export default function AttendanceMonitoringContent() {
               ) : (
                 <tr>
                   <td colSpan={dateHeaders.length + 1} className="text-center p-4">
-                    Tidak ada data siswa untuk ditampilkan pada rentang waktu ini.
+                    Tidak ada data siswa untuk ditampilkan pada bulan ini.
                   </td>
                 </tr>
               )}
