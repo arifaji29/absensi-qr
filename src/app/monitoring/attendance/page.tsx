@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Home } from "lucide-react";
 
-type AttendanceRecord = { date: string; status: string };
+type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "-";
+
+type AttendanceRecord = { date: string; status: AttendanceStatus };
 type MonitoringData = {
   student_id: string;
   name: string;
@@ -14,15 +16,15 @@ type MonitoringData = {
 };
 
 const monthNames = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-// --- FUNGSI BARU UNTUK FORMAT TANGGAL YANG AMAN DARI TIMEZONE ---
+// --- FUNGSI BARU UNTUK FORMAT TANGGAL ---
 const formatDateToYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -34,7 +36,7 @@ export default function AttendanceMonitoringContent() {
   const [loading, setLoading] = useState(true);
   const [className, setClassName] = useState("");
   const [dateHeaders, setDateHeaders] = useState<string[]>([]);
-  
+
   const [filterMode, setFilterMode] = useState<"last7days" | "monthly">("monthly");
   const currentYear = new Date().getFullYear();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
@@ -44,31 +46,32 @@ export default function AttendanceMonitoringContent() {
     if (!classId) return;
     setLoading(true);
 
-    const dates = [];
-    // Gunakan new Date() tanpa T00:00:00 agar lebih aman saat parsing
+    const dates: string[] = [];
+    // pakai let karena diubah tiap iterasi
     let currentDate = new Date(startDate);
     const finalDate = new Date(endDate);
-    
+
     while (currentDate <= finalDate) {
-      // Gunakan fungsi helper baru kita
       dates.push(formatDateToYYYYMMDD(currentDate));
       currentDate.setDate(currentDate.getDate() + 1);
     }
     setDateHeaders(dates);
 
     try {
-      const res = await fetch(`/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`);
+      const res = await fetch(
+        `/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`
+      );
       if (!res.ok) throw new Error("Gagal mengambil data dari server");
-      const data = await res.json();
+      const data: MonitoringData[] = await res.json();
       setMonitoringData(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Gagal memuat data monitoring:", err);
+    } catch (error) {
+      console.error("Gagal memuat data monitoring:", error);
       setMonitoringData([]);
     } finally {
       setLoading(false);
     }
   }, [classId]);
-  
+
   useEffect(() => {
     const fetchClassDetails = async () => {
       if (!classId) return;
@@ -82,21 +85,19 @@ export default function AttendanceMonitoringContent() {
     };
     fetchClassDetails();
   }, [classId]);
-  
+
   useEffect(() => {
     let startDate: string;
     let endDate: string;
 
-    if (filterMode === 'last7days') {
+    if (filterMode === "last7days") {
       const today = new Date();
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(today.getDate() - 6);
-      
-      // Gunakan fungsi helper baru kita
+
       startDate = formatDateToYYYYMMDD(sevenDaysAgo);
       endDate = formatDateToYYYYMMDD(today);
-    } else { 
-      // Gunakan fungsi helper baru kita
+    } else {
       startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
       endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
     }
@@ -104,7 +105,7 @@ export default function AttendanceMonitoringContent() {
     fetchData(startDate, endDate);
   }, [filterMode, selectedMonth, selectedYear, fetchData]);
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: AttendanceStatus) => {
     switch (status.toLowerCase()) {
       case "hadir": return "bg-green-100 text-green-800";
       case "sakit": return "bg-red-100 text-red-800 font-bold";
@@ -123,20 +124,32 @@ export default function AttendanceMonitoringContent() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border items-center">
         <div className="flex items-center gap-2">
           <label className="font-medium whitespace-nowrap">Tampilkan Data:</label>
-          <select value={filterMode} onChange={(e) => setFilterMode(e.target.value as any)} className="w-full p-2 border rounded-md bg-white">
+          <select
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value as "last7days" | "monthly")}
+            className="w-full p-2 border rounded-md bg-white"
+          >
             <option value="last7days">7 Hari Terakhir</option>
             <option value="monthly">Per Bulan</option>
           </select>
         </div>
-        
-        {filterMode === 'monthly' && (
+
+        {filterMode === "monthly" && (
           <div className="flex items-center gap-2">
-            <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              className="w-full p-2 border rounded-md bg-white"
+            >
               {monthNames.map((name, index) => (
                 <option key={index} value={index}>{name}</option>
               ))}
             </select>
-            <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="w-full p-2 border rounded-md bg-white"
+            >
               {Array.from({ length: 5 }, (_, i) => currentYear - i).map(year => (
                 <option key={year} value={year}>{year}</option>
               ))}
@@ -145,22 +158,24 @@ export default function AttendanceMonitoringContent() {
         )}
 
         <div className="flex items-center gap-3 lg:justify-end">
-           <Link href="/dashboard-monitoring">
-              <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
-                <ArrowLeft size={18} />
-                <span>Back</span>
-              </button>
-            </Link>
-            <Link href="/">
-              <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-                <Home size={18} />
-                <span>Home</span>
-              </button>
-            </Link>
+          <Link href="/dashboard-monitoring">
+            <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
+              <ArrowLeft size={18} />
+              <span>Back</span>
+            </button>
+          </Link>
+          <Link href="/">
+            <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              <Home size={18} />
+              <span>Home</span>
+            </button>
+          </Link>
         </div>
       </div>
-      
-      {loading ? <p>Memuat data...</p> : (
+
+      {loading ? (
+        <p>Memuat data...</p>
+      ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse border">
             <thead className="bg-gray-100 sticky top-0 z-10">
@@ -168,26 +183,44 @@ export default function AttendanceMonitoringContent() {
                 <th className="border p-2 text-left sticky left-0 bg-gray-100 z-20">Nama Siswa</th>
                 {dateHeaders.map((date) => (
                   <th key={date} className="border p-2 whitespace-nowrap">
-                    {new Date(date).toLocaleDateString('id-ID', { timeZone: 'UTC', day: '2-digit', month: 'short' })}
+                    {new Date(date).toLocaleDateString("id-ID", {
+                      timeZone: "UTC",
+                      day: "2-digit",
+                      month: "short",
+                    })}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {monitoringData.length > 0 ? monitoringData.map((student) => (
-                <tr key={student.student_id}>
-                  <td className="border p-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap">{student.name}</td>
-                  {dateHeaders.map((date) => {
-                    const record = student.attendance_records.find((r) => r.date === date);
-                    const status = record?.status || "-";
-                    return (
-                      <td key={date} className={`border p-2 text-center ${getStatusColor(status)}`}>{status}</td>
-                    );
-                  })}
-                </tr>
-              )) : (
+              {monitoringData.length > 0 ? (
+                monitoringData.map((student) => (
+                  <tr key={student.student_id}>
+                    <td className="border p-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap">
+                      {student.name}
+                    </td>
+                    {dateHeaders.map((date) => {
+                      const record = student.attendance_records.find((r) => r.date === date);
+                      const status: AttendanceStatus = record?.status as AttendanceStatus || "-";
+                      return (
+                        <td
+                          key={date}
+                          className={`border p-2 text-center ${getStatusColor(status)}`}
+                        >
+                          {status}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan={dateHeaders.length + 1} className="text-center p-4">Tidak ada data siswa untuk ditampilkan pada rentang waktu ini.</td>
+                  <td
+                    colSpan={dateHeaders.length + 1}
+                    className="text-center p-4"
+                  >
+                    Tidak ada data siswa untuk ditampilkan pada rentang waktu ini.
+                  </td>
                 </tr>
               )}
             </tbody>
