@@ -3,7 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home } from "lucide-react";
+import { ArrowLeft, Home, Download } from "lucide-react";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "-";
 
@@ -17,7 +20,7 @@ type MonitoringData = {
 
 const monthNames = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
 const formatDateToYYYYMMDD = (date: Date): string => {
@@ -80,6 +83,7 @@ export default function AttendanceMonitoringContent() {
       if (!classId) return;
       try {
         const res = await fetch(`/api/classes/${classId}/details`);
+        if (!res.ok) throw new Error("Gagal ambil detail kelas");
         const classData = await res.json();
         setClassName(classData.name || "");
       } catch (error) {
@@ -124,6 +128,62 @@ export default function AttendanceMonitoringContent() {
         return "bg-white";
     }
   };
+
+  // Export ke Excel
+  const handleDownloadExcel = () => {
+    const worksheetData: any[] = [];
+
+    // Header
+    worksheetData.push(["Nama Siswa", ...dateHeaders]);
+
+    // Data siswa
+    monitoringData.forEach((student) => {
+      const row = [student.name];
+      dateHeaders.forEach((date) => {
+        const record = student.attendance_records.find((r) => r.date === date);
+        row.push(record?.status || "-");
+      });
+      worksheetData.push(row);
+    });
+
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi");
+
+    XLSX.writeFile(workbook, `Absensi_${className || "kelas"}.xlsx`);
+  };
+
+  //DOWNLOAD pdf
+  const handleDownloadPDF = () => {
+  const doc = new jsPDF();
+
+  // Kolom tabel
+  const tableColumn = ["Nama Siswa", ...dateHeaders];
+  const tableRows: any[] = [];
+
+  monitoringData.forEach((student) => {
+    const rowData: string[] = [student.name];
+    dateHeaders.forEach((date) => {
+      const record = student.attendance_records.find((r) => r.date === date);
+      rowData.push(record?.status || "-");
+    });
+    tableRows.push(rowData);
+  });
+
+  // Judul
+  doc.text(`Laporan Kehadiran ${className ? `Kelas ${className}` : ""}`, 14, 15);
+
+  // Gunakan autoTable dengan cara yang benar
+  autoTable(doc, {
+    head: [tableColumn],
+    body: tableRows,
+    startY: 25,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [66, 66, 66] },
+  });
+
+  doc.save(`Absensi_${className || "kelas"}.pdf`);
+};
 
   return (
     <div className="p-6">
@@ -172,7 +232,21 @@ export default function AttendanceMonitoringContent() {
           </div>
         )}
 
-        <div className="flex items-center gap-3 lg:justify-end">
+        <div className="flex items-center gap-3 lg:justify-end flex-wrap">
+          <button
+            onClick={handleDownloadExcel}
+            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            <Download size={18} />
+            <span>Excel</span>
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+          >
+            <Download size={18} />
+            <span>PDF</span>
+          </button>
           <Link href="/dashboard-monitoring">
             <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
               <ArrowLeft size={18} />
@@ -219,7 +293,7 @@ export default function AttendanceMonitoringContent() {
                     </td>
                     {dateHeaders.map((date) => {
                       const record = student.attendance_records.find((r) => r.date === date);
-                      const status: AttendanceStatus = record?.status as AttendanceStatus || "-";
+                      const status: AttendanceStatus = record?.status || "-";
                       return (
                         <td
                           key={date}
