@@ -131,14 +131,14 @@ export default function AttendanceMonitoringContent() {
 
   // Export ke Excel
   const handleDownloadExcel = () => {
-    const worksheetData: any[] = [];
+    const worksheetData: (string | number)[][] = [];
 
     // Header
     worksheetData.push(["Nama Siswa", ...dateHeaders]);
 
     // Data siswa
     monitoringData.forEach((student) => {
-      const row = [student.name];
+      const row: (string | number)[] = [student.name];
       dateHeaders.forEach((date) => {
         const record = student.attendance_records.find((r) => r.date === date);
         row.push(record?.status || "-");
@@ -155,35 +155,35 @@ export default function AttendanceMonitoringContent() {
 
   //DOWNLOAD pdf
   const handleDownloadPDF = () => {
-  const doc = new jsPDF();
+    const doc = new jsPDF();
 
-  // Kolom tabel
-  const tableColumn = ["Nama Siswa", ...dateHeaders];
-  const tableRows: any[] = [];
+    // Kolom tabel
+    const tableColumn: string[] = ["Nama Siswa", ...dateHeaders];
+    const tableRows: (string | number)[][] = [];
 
-  monitoringData.forEach((student) => {
-    const rowData: string[] = [student.name];
-    dateHeaders.forEach((date) => {
-      const record = student.attendance_records.find((r) => r.date === date);
-      rowData.push(record?.status || "-");
+    monitoringData.forEach((student) => {
+      const rowData: (string | number)[] = [student.name];
+      dateHeaders.forEach((date) => {
+        const record = student.attendance_records.find((r) => r.date === date);
+        rowData.push(record?.status || "-");
+      });
+      tableRows.push(rowData);
     });
-    tableRows.push(rowData);
-  });
 
-  // Judul
-  doc.text(`Laporan Kehadiran ${className ? `Kelas ${className}` : ""}`, 14, 15);
+    // Judul
+    doc.text(`Laporan Kehadiran ${className ? `Kelas ${className}` : ""}`, 14, 15);
 
-  // Gunakan autoTable dengan cara yang benar
-  autoTable(doc, {
-    head: [tableColumn],
-    body: tableRows,
-    startY: 25,
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [66, 66, 66] },
-  });
+    // Gunakan autoTable dengan cara yang benar
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 25,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [66, 66, 66] },
+    });
 
-  doc.save(`Absensi_${className || "kelas"}.pdf`);
-};
+    doc.save(`Absensi_${className || "kelas"}.pdf`);
+  };
 
   return (
     <div className="p-6">
