@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Download, RefreshCw, FileText, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Home, RefreshCw, FileText, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -23,8 +23,12 @@ const monthNames = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
+// Fungsi helper yang aman untuk format tanggal YYYY-MM-DD
 const formatDateToYYYYMMDD = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export default function AttendanceMonitoringPage() {
@@ -41,14 +45,20 @@ export default function AttendanceMonitoringPage() {
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
-  // Ambil data monitoring
   const fetchData = useCallback(async (startDate: string, endDate: string) => {
     if (!classId) return;
     setLoading(true);
 
+    // ==========================================================
+    // PERBAIKAN UTAMA: Logika pembuatan daftar tanggal yang baru dan andal
+    // ==========================================================
     const dates: string[] = [];
-    for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
-      dates.push(formatDateToYYYYMMDD(new Date(d)));
+    // Hitung jumlah hari yang benar dalam bulan yang dipilih
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    // Lakukan iterasi dari hari ke-1 sampai hari terakhir
+    for (let day = 1; day <= daysInMonth; day++) {
+      const currentDate = new Date(selectedYear, selectedMonth, day);
+      dates.push(formatDateToYYYYMMDD(currentDate));
     }
     setDateHeaders(dates);
 
@@ -63,7 +73,7 @@ export default function AttendanceMonitoringPage() {
     } finally {
       setLoading(false);
     }
-  }, [classId]);
+  }, [classId, selectedMonth, selectedYear]); // Tambahkan dependensi
 
   // Ambil detail kelas
   useEffect(() => {
@@ -92,7 +102,6 @@ export default function AttendanceMonitoringPage() {
     loadData();
   }, [loadData]);
 
-  // Fungsi pewarnaan status
   const getStatusClasses = (status: AttendanceStatus) => {
     switch (status) {
       case "Hadir": return "bg-green-100 text-green-800 font-semibold";
@@ -103,14 +112,13 @@ export default function AttendanceMonitoringPage() {
     }
   };
 
-  // Fungsi Export ke Excel
   const handleDownloadExcel = () => {
-    const header = ["Nama Siswa", ...dateHeaders.map(d => new Date(d).toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }))];
+    const header = ["Nama Siswa", ...dateHeaders.map(d => new Date(d + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }))];
     const body = monitoringData.map(student => {
       const row: { [key: string]: string } = { "Nama Siswa": student.name };
       dateHeaders.forEach(date => {
         const record = student.attendance_records.find(r => r.date === date);
-        row[new Date(date).toLocaleDateString("id-ID", { day: '2-digit', month: 'short' })] = record?.status || "-";
+        row[new Date(date + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit', month: 'short' })] = record?.status || "-";
       });
       return row;
     });
@@ -119,18 +127,17 @@ export default function AttendanceMonitoringPage() {
     XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi");
     XLSX.writeFile(workbook, `Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.xlsx`);
   };
-  
-  // Fungsi Export ke PDF
+
   const handleDownloadPDF = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const tableColumn = ["Nama Siswa", ...dateHeaders.map(d => new Date(d).toLocaleDateString("id-ID", { day: '2-digit' }))];
-    const tableRows = monitoringData.map(student => [student.name, ...dateHeaders.map(date => student.attendance_records.find(r => r.date === date)?.status || "-")]);
+    const tableColumn = ["Nama", ...dateHeaders.map(d => new Date(d + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit' }))];
+    const tableRows = monitoringData.map(student => [student.name, ...dateHeaders.map(date => student.attendance_records.find(r => r.date === date)?.status.charAt(0) || "-")]);
     doc.text(`Laporan Kehadiran Kelas ${className} - ${monthNames[selectedMonth]} ${selectedYear}`, 14, 15);
     autoTable(doc, {
       head: [tableColumn], body: tableRows, startY: 25,
-      styles: { fontSize: 6, cellPadding: 1 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      columnStyles: { 0: { cellWidth: 35 } },
+      styles: { fontSize: 6, cellPadding: 1, halign: 'center' },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
+      columnStyles: { 0: { cellWidth: 35, halign: 'left' } },
     });
     doc.save(`Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
   };
@@ -138,8 +145,6 @@ export default function AttendanceMonitoringPage() {
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
       <div className="bg-white p-6 rounded-xl shadow-md">
-
-        {/* Header Halaman */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
@@ -160,8 +165,6 @@ export default function AttendanceMonitoringPage() {
             </Link>
           </div>
         </div>
-
-        {/* Panel Kontrol */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
           <div className="flex flex-col sm:flex-row gap-2 items-center w-full md:w-auto">
             <div className="flex gap-2 w-full sm:w-auto">
@@ -188,8 +191,6 @@ export default function AttendanceMonitoringPage() {
             </button>
           </div>
         </div>
-
-        {/* Tabel Laporan */}
         {loading ? (<p className="text-center text-gray-500 py-8">Memuat data laporan...</p>) : (
           <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-sm">
@@ -198,7 +199,7 @@ export default function AttendanceMonitoringPage() {
                   <th className="p-3 text-left font-semibold sticky left-0 bg-gray-100 z-10 border-r">Nama Siswa</th>
                   {dateHeaders.map((date) => (
                     <th key={date} className="p-3 font-semibold whitespace-nowrap text-center border-l">
-                      {new Date(date).toLocaleDateString("id-ID", { timeZone: "UTC", day: "2-digit", month: "short" })}
+                      {new Date(date + 'T00:00:00').toLocaleDateString("id-ID", { day: "2-digit", month: "short" })}
                     </th>
                   ))}
                 </tr>
@@ -222,8 +223,8 @@ export default function AttendanceMonitoringPage() {
                 ) : (
                   <tr>
                     <td colSpan={dateHeaders.length + 1} className="text-center p-8 text-gray-500">
-                        <h3 className="text-lg font-semibold">Tidak Ada Data</h3>
-                        <p>Belum ada data kehadiran siswa pada periode ini.</p>
+                      <h3 className="text-lg font-semibold">Tidak Ada Data</h3>
+                      <p>Belum ada data kehadiran siswa pada periode ini.</p>
                     </td>
                   </tr>
                 )}
