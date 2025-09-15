@@ -5,7 +5,7 @@ import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
 export async function middleware(req: NextRequest) {
   // Penting: teruskan headers supaya cookie supabase terbaca
-  let res = NextResponse.next({
+  const res = NextResponse.next({
     request: { headers: req.headers },
   });
 

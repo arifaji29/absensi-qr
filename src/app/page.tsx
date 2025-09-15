@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+// 1. IMPORT TIPE DATA 'Session' DARI SUPABASE
+import type { Session } from "@supabase/auth-helpers-nextjs";
 
-// Kumpulan Ikon SVG
+// Kumpulan Ikon SVG (Tidak ada perubahan)
 const IconKelas = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
@@ -43,7 +45,8 @@ const IconMonitoring = () => (
 
 export default function HomePage() {
   const supabase = createClientComponentClient();
-  const [session, setSession] = useState<any>(null);
+  // 2. PERBAIKI TIPE useState DARI <any> MENJADI <Session | null>
+  const [session, setSession] = useState<Session | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -90,10 +93,7 @@ export default function HomePage() {
         <p className="mt-2 text-2xl font-semibold text-green-600">
           TPQ MIFTAKHUL HUDA, WERDI
         </p>
-
-        {/* ======================================================== */}
-        {/* PERUBAHAN UTAMA: Tombol Login/Logout kembali ke sini    */}
-        {/* ======================================================== */}
+        
         <div className="mt-8 flex justify-center items-center gap-4">
           {session ? (
             <div className="flex flex-col sm:flex-row items-center gap-3">
