@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import { createRoot } from "react-dom/client";
-import { ArrowLeft, Home, Plus } from "lucide-react";
-
+import { ArrowLeft, Home, Plus, Download, Edit, Trash2 } from "lucide-react";
 
 // Tipe data
 type Student = {
@@ -23,87 +22,72 @@ type Class = {
   name: string;
 };
 
-export default function StudentsContent() {
+// Komponen utama
+export default function StudentsPage() {
   const searchParams = useSearchParams();
   const classIdFromUrl = searchParams.get("class_id") || "";
 
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const activeClassId = classIdFromUrl || selectedClassId;
-
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [className, setClassName] = useState("");
   const [loading, setLoading] = useState(true);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [className, setClassName] = useState("");
-
+  
   const [form, setForm] = useState({
     nis: "",
     name: "",
     gender: "Laki-laki",
     date_of_birth: "",
-    class_id: activeClassId,
+    class_id: classIdFromUrl,
   });
-
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Memuat data kelas & siswa
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const promises: Promise<Response>[] = [
+      const [classRes, studentRes] = await Promise.all([
         fetch("/api/classes"),
-        fetch(`/api/students${activeClassId ? `?class_id=${activeClassId}` : ""}`),
-      ];
-
-      if (classIdFromUrl) {
-        promises.push(fetch(`/api/classes/${classIdFromUrl}/details`));
-      }
-
-      const responses = await Promise.all(promises);
-      const [classRes, studentRes, classDetailRes] = responses;
+        fetch(`/api/students${classIdFromUrl ? `?class_id=${classIdFromUrl}` : ""}`),
+      ]);
 
       if (!classRes.ok || !studentRes.ok) throw new Error("Gagal memuat data utama");
 
-      setClasses(await classRes.json());
+      const classesData = await classRes.json();
+      setClasses(classesData);
       setStudents(await studentRes.json());
-
-      if (classIdFromUrl && classDetailRes && classDetailRes.ok) {
-        setClassName((await classDetailRes.json()).name);
-      } else {
-        setClassName("");
+      
+      if (classIdFromUrl) {
+        const currentClass = classesData.find((c: Class) => c.id === classIdFromUrl);
+        setClassName(currentClass ? currentClass.name : "");
       }
-    } catch (error: unknown) {
+
+    } catch (error) {
       console.error(error);
       alert("Gagal memuat data.");
     } finally {
       setLoading(false);
     }
-  }, [activeClassId, classIdFromUrl]);
+  }, [classIdFromUrl]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // Fungsi untuk mereset form
   const resetForm = useCallback(() => {
-    setForm({
-      nis: "",
-      name: "",
-      gender: "Laki-laki",
-      date_of_birth: "",
-      class_id: activeClassId,
-    });
-  }, [activeClassId]);
+    setForm({ nis: "", name: "", gender: "Laki-laki", date_of_birth: "", class_id: classIdFromUrl });
+  }, [classIdFromUrl]);
 
-  // Download QR siswa
+  // Fungsi untuk download QR Code siswa
   const downloadQR = useCallback((student: Student) => {
     const qrClassName = className || classes.find((c) => c.id === student.class_id)?.name || "-";
     const temp = document.createElement("div");
     document.body.appendChild(temp);
     const root = createRoot(temp);
-    root.render(
-      <QRCodeCanvas value={JSON.stringify({ nis: student.nis, name: student.name, class: qrClassName })} size={220} includeMargin />
-    );
+    root.render(<QRCodeCanvas value={JSON.stringify({ nis: student.nis, name: student.name, class: qrClassName })} size={220} includeMargin />);
     setTimeout(() => {
       const qrCanvas = temp.querySelector("canvas");
       if (!qrCanvas) { root.unmount(); document.body.removeChild(temp); return; }
@@ -120,8 +104,10 @@ export default function StudentsContent() {
       let y = padding + qrCanvas.height + 15;
       ctx.font = "16px Arial";
       ctx.fillText(student.nis, finalCanvas.width / 2, y); y += 22;
+      ctx.font = "bold 16px Arial";
       ctx.fillText(student.name, finalCanvas.width / 2, y); y += 22;
-      ctx.fillText(qrClassName, finalCanvas.width / 2, y);
+      ctx.font = "16px Arial";
+      ctx.fillText(`Kelas: ${qrClassName}`, finalCanvas.width / 2, y);
       const link = document.createElement("a");
       link.href = finalCanvas.toDataURL("image/png");
       link.download = `QR_${student.name}_${student.nis}.png`;
@@ -131,266 +117,170 @@ export default function StudentsContent() {
     }, 100);
   }, [className, classes]);
 
-  // Tambah siswa
+  // Fungsi untuk menangani penambahan siswa
   const handleAdd = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch("/api/students", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, class_id: activeClassId }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, class_id: classIdFromUrl }),
       });
       if (!res.ok) throw new Error("Gagal menambah siswa");
       setShowAddModal(false);
       resetForm();
       await loadData();
-    } catch (error: unknown) {
+    } catch (error) {
       if (error instanceof Error) alert(error.message);
     }
-  }, [form, activeClassId, resetForm, loadData]);
+  }, [form, classIdFromUrl, resetForm, loadData]);
 
-  // Edit siswa
+  // Fungsi untuk menangani pengeditan siswa
   const handleEdit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingId) return;
     try {
       const res = await fetch(`/api/students/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
       });
       if (!res.ok) throw new Error("Gagal mengedit siswa");
       setShowEditModal(false);
       await loadData();
-    } catch (error: unknown) {
+    } catch (error) {
       if (error instanceof Error) alert(error.message);
     }
   }, [editingId, form, loadData]);
 
-  // Hapus siswa
+  // Fungsi untuk menghapus siswa
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm("Yakin ingin menghapus siswa ini?")) return;
     try {
       const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal menghapus siswa");
       await loadData();
-    } catch (error: unknown) {
+    } catch (error) {
       if (error instanceof Error) alert(error.message);
     }
   }, [loadData]);
 
+  // Fungsi untuk membuka modal edit
   const openEditModal = useCallback((student: Student) => {
     setEditingId(student.id);
     setForm({
-      nis: student.nis,
-      name: student.name,
-      gender: student.gender,
+      nis: student.nis, name: student.name, gender: student.gender,
       date_of_birth: student.date_of_birth ? student.date_of_birth.split("T")[0] : "",
-      class_id: student.class_id || activeClassId,
+      class_id: student.class_id || classIdFromUrl,
     });
     setShowEditModal(true);
-  }, [activeClassId]);
+  }, [classIdFromUrl]);
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">
-        Daftar Siswa {className ? `Kelas ${className}` : ""}
-      </h1>
+    <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
+      <div className="bg-white p-6 rounded-xl shadow-md">
 
-      {!classIdFromUrl && (
-        <div className="mb-6">
-          <label className="mr-2 font-medium">Filter Kelas:</label>
-          <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)} className="border p-2 rounded">
-            <option value="">Semua Kelas</option>
-            {classes.map((cls) => (<option key={cls.id} value={cls.id}>{cls.name}</option>))}
-          </select>
-        </div>
-      )}
-
-      {classIdFromUrl && (
-        <div className="flex gap-3 mb-6">
-          {/* Tombol Back */}
-          <Link href="/dashboard-students">
-            <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-              <ArrowLeft size={18} />
+        {/* Header Halaman */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              Daftar Siswa {className ? `Kelas ${className}` : ""}
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Kelola data siswa per kelas atau secara keseluruhan.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard-students" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+              <ArrowLeft size={16} />
               <span>Back</span>
-            </button>
-          </Link>
-
-          {/* Tombol Home */}
-          <Link href="/">
-            <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-700">
-              <Home size={18} />
+            </Link>
+            <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
+              <Home size={16} />
               <span>Home</span>
+            </Link>
+          </div>
+        </div>
+        
+        {/* Tombol Aksi Utama (hanya muncul saat melihat per kelas) */}
+        {classIdFromUrl && (
+          <div className="mb-6">
+            <button
+              onClick={() => { resetForm(); setShowAddModal(true); }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+            >
+              <Plus size={18} />
+              <span>Tambah Siswa</span>
             </button>
-          </Link>
-
-          {/* Tombol Tambah Siswa */}
-          <button
-            onClick={() => {
-              resetForm();
-              setShowAddModal(true);
-            }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            <Plus size={18} />
-            <span>Tambah Siswa</span>
-          </button>
-        </div>
-      )}
-
-      {loading ? (<p>Memuat data siswa...</p>) : (
-        <div className="overflow-x-auto bg-white rounded-lg shadow">
-          <table className="w-full border-collapse">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 text-left">NIS</th><th className="p-3 text-left">Nama</th><th className="p-3 text-left">Gender</th>
-                <th className="p-3 text-left">Tanggal Lahir</th><th className="p-3 text-left">Kelas</th>
-                {classIdFromUrl && <th className="p-3 text-center">Aksi</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {students.length === 0 ? (
-                <tr><td colSpan={classIdFromUrl ? 6 : 5} className="text-center p-4">Belum ada data.</td></tr>
-              ) : (
-                students.map((s) => (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="border-b p-3">{s.nis}</td><td className="border-b p-3">{s.name}</td><td className="border-b p-3">{s.gender}</td>
-                    <td className="border-b p-3">{s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString("id-ID") : "-"}</td>
-                    <td className="border-b p-3">{classes.find((c) => c.id === s.class_id)?.name || "-"}</td>
-                    {classIdFromUrl && (
-                      <td className="border-b p-3 text-center space-x-2">
-                        <button onClick={() => downloadQR(s)} className="px-2 py-1 bg-green-600 text-white rounded">QR</button>
-                        <button onClick={() => openEditModal(s)} className="px-2 py-1 bg-yellow-500 text-white rounded">Edit</button>
-                        <button onClick={() => handleDelete(s.id)} className="px-2 py-1 bg-red-600 text-white rounded">Hapus</button>
-                      </td>
-                    )}
+          </div>
+        )}
+        
+        {/* Tabel Data Siswa */}
+        {loading ? (<p className="text-center text-gray-500 py-8">Memuat data siswa...</p>) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 text-left text-gray-600">
+                <tr>
+                  <th className="p-4 font-semibold">NIS</th>
+                  <th className="p-4 font-semibold">Nama</th>
+                  <th className="p-4 font-semibold">Gender</th>
+                  <th className="p-4 font-semibold">Tanggal Lahir</th>
+                  {!classIdFromUrl && <th className="p-4 font-semibold">Kelas</th>}
+                  {classIdFromUrl && <th className="p-4 font-semibold text-center">Aksi</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {students.length === 0 ? (
+                  <tr>
+                    <td colSpan={classIdFromUrl ? 5 : 5} className="text-center p-8">
+                      <div className="text-center text-gray-500">
+                        <h3 className="text-lg font-semibold">Belum Ada Data Siswa</h3>
+                        {classIdFromUrl && <p className="mt-1">Silakan tambahkan siswa baru untuk kelas ini.</p>}
+                      </div>
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                ) : (
+                  students.map((s) => (
+                    <tr key={s.id} className="hover:bg-gray-50 border-b last:border-b-0">
+                      <td className="p-4 whitespace-nowrap">{s.nis}</td>
+                      <td className="p-4 font-medium text-gray-800 whitespace-nowrap">{s.name}</td>
+                      <td className="p-4 whitespace-nowrap">{s.gender}</td>
+                      <td className="p-4 whitespace-nowrap">{s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString("id-ID", { year: 'numeric', month: 'long', day: 'numeric' }) : "-"}</td>
+                      {!classIdFromUrl && <td className="p-4 whitespace-nowrap">{classes.find((c) => c.id === s.class_id)?.name || "-"}</td>}
+                      {classIdFromUrl && (
+                        <td className="p-4 text-center space-x-2">
+                          <button onClick={() => downloadQR(s)} title="Download QR" className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200"><Download size={14} /></button>
+                          <button onClick={() => openEditModal(s)} title="Edit" className="p-2 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"><Edit size={14} /></button>
+                          <button onClick={() => handleDelete(s.id)} title="Hapus" className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"><Trash2 size={14} /></button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
-      {/* Modal Tambah Siswa */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <form onSubmit={handleAdd} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-2">Tambah Siswa</h2>
-            <input
-              type="text"
-              placeholder="NIS"
-              value={form.nis}
-              onChange={(e) => setForm({ ...form, nis: e.target.value })}
-              className="border p-2 w-full rounded"
-            />
-            <input
-              type="text"
-              placeholder="Nama"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="border p-2 w-full rounded"
-              required
-            />
-            <select
-              value={form.gender}
-              onChange={(e) => setForm({ ...form, gender: e.target.value })}
-              className="border p-2 w-full rounded"
-            >
-              <option value="Laki-laki">Laki-laki</option>
-              <option value="Perempuan">Perempuan</option>
-            </select>
-
-            {/* Keterangan Tanggal Lahir */}
-            <label className="block text-sm font-medium text-gray-700">
-              Tanggal Lahir
-            </label>
-            <input
-              type="date"
-              value={form.date_of_birth}
-              onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-              className="border p-2 w-full rounded"
-            />
-
-            <div className="flex justify-end pt-4 space-x-3">
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 bg-gray-400 text-white rounded"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-green-600 text-white rounded"
-              >
-                Simpan
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Modal Edit Siswa */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <form onSubmit={handleEdit} className="bg-white p-6 rounded-lg space-y-3 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-2">Edit Siswa</h2>
-            <input
-              type="text"
-              placeholder="NIS"
-              value={form.nis}
-              onChange={(e) => setForm({ ...form, nis: e.target.value })}
-              className="border p-2 w-full rounded"
-            />
-            <input
-              type="text"
-              placeholder="Nama"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="border p-2 w-full rounded"
-              required
-            />
-            <select
-              value={form.gender}
-              onChange={(e) => setForm({ ...form, gender: e.target.value })}
-              className="border p-2 w-full rounded"
-            >
-              <option value="Laki-laki">Laki-laki</option>
-              <option value="Perempuan">Perempuan</option>
-            </select>
-
-            {/* Keterangan Tanggal Lahir */}
-            <label className="block text-sm font-medium text-gray-700">
-              Tanggal Lahir
-            </label>
-            <input
-              type="date"
-              value={form.date_of_birth}
-              onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
-              className="border p-2 w-full rounded"
-            />
-
-            <div className="flex justify-end pt-4 space-x-3">
-              <button
-                type="button"
-                onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 bg-gray-400 text-white rounded"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-yellow-600 text-white rounded"
-              >
-                Update
-              </button>
-            </div>
-          </form>
-        </div>
-
-      )}
+        {/* Modal Tambah Siswa */}
+        {(showAddModal || showEditModal) && (
+          <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
+            <form onSubmit={showAddModal ? handleAdd : handleEdit} className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md space-y-4">
+              <h2 className="text-2xl font-bold mb-4">{showAddModal ? 'Tambah Siswa Baru' : 'Edit Data Siswa'}</h2>
+              <input type="text" placeholder="NIS" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50" />
+              <input type="text" placeholder="Nama Lengkap" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50" required />
+              <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50">
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">Tanggal Lahir</label>
+                <input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50" />
+              </div>
+              <div className="flex justify-end gap-4 pt-4">
+                <button type="button" onClick={() => { setShowAddModal(false); setShowEditModal(false); }} className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">Batal</button>
+                <button type="submit" className={`px-6 py-2 text-white rounded-lg font-semibold ${showAddModal ? 'bg-blue-600 hover:bg-blue-700' : 'bg-yellow-500 hover:bg-yellow-600'}`}>{showAddModal ? "Simpan" : "Update"}</button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

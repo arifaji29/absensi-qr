@@ -3,13 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Home, Download, RefreshCw, FileText, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Tipe data
 type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "-";
-
 type AttendanceRecord = { date: string; status: AttendanceStatus };
 type MonitoringData = {
   student_id: string;
@@ -24,13 +24,10 @@ const monthNames = [
 ];
 
 const formatDateToYYYYMMDD = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return date.toISOString().split('T')[0];
 };
 
-export default function AttendanceMonitoringContent() {
+export default function AttendanceMonitoringPage() {
   const searchParams = useSearchParams();
   const classId = searchParams.get("class_id") || "";
 
@@ -45,36 +42,28 @@ export default function AttendanceMonitoringContent() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   // Ambil data monitoring
-  const fetchData = useCallback(
-    async (startDate: string, endDate: string) => {
-      if (!classId) return;
-      setLoading(true);
+  const fetchData = useCallback(async (startDate: string, endDate: string) => {
+    if (!classId) return;
+    setLoading(true);
 
-      const dates: string[] = [];
-      const start = new Date(startDate);
-      const finalDate = new Date(endDate);
+    const dates: string[] = [];
+    for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
+      dates.push(formatDateToYYYYMMDD(new Date(d)));
+    }
+    setDateHeaders(dates);
 
-      for (let d = new Date(start); d <= finalDate; d.setDate(d.getDate() + 1)) {
-        dates.push(formatDateToYYYYMMDD(new Date(d)));
-      }
-      setDateHeaders(dates);
-
-      try {
-        const res = await fetch(
-          `/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`
-        );
-        if (!res.ok) throw new Error("Gagal mengambil data dari server");
-        const data: MonitoringData[] = await res.json();
-        setMonitoringData(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Gagal memuat data monitoring:", error);
-        setMonitoringData([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [classId]
-  );
+    try {
+      const res = await fetch(`/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`);
+      if (!res.ok) throw new Error("Gagal mengambil data dari server");
+      const data: MonitoringData[] = await res.json();
+      setMonitoringData(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Gagal memuat data monitoring:", error);
+      setMonitoringData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [classId]);
 
   // Ambil detail kelas
   useEffect(() => {
@@ -103,206 +92,146 @@ export default function AttendanceMonitoringContent() {
     loadData();
   }, [loadData]);
 
-  const getStatusColor = (status: AttendanceStatus) => {
-    switch (status.toLowerCase()) {
-      case "hadir":
-        return "bg-green-100 text-green-800";
-      case "sakit":
-        return "bg-red-100 text-red-800 font-bold";
-      case "izin":
-        return "bg-yellow-100 text-yellow-800";
-      case "alpha":
-        return "bg-gray-200 text-gray-700";
-      default:
-        return "bg-white";
+  // Fungsi pewarnaan status
+  const getStatusClasses = (status: AttendanceStatus) => {
+    switch (status) {
+      case "Hadir": return "bg-green-100 text-green-800 font-semibold";
+      case "Sakit": return "bg-red-100 text-red-800 font-semibold";
+      case "Izin": return "bg-yellow-100 text-yellow-800 font-semibold";
+      case "Alpha": return "bg-gray-200 text-gray-700 font-semibold";
+      default: return "text-gray-400";
     }
   };
 
-  // Export ke Excel
+  // Fungsi Export ke Excel
   const handleDownloadExcel = () => {
-    const worksheetData: (string | number)[][] = [];
-    worksheetData.push(["Nama Siswa", ...dateHeaders]);
-
-    monitoringData.forEach((student) => {
-      const row: (string | number)[] = [student.name];
-      dateHeaders.forEach((date) => {
-        const record = student.attendance_records.find((r) => r.date === date);
-        row.push(record?.status || "-");
+    const header = ["Nama Siswa", ...dateHeaders.map(d => new Date(d).toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }))];
+    const body = monitoringData.map(student => {
+      const row: { [key: string]: string } = { "Nama Siswa": student.name };
+      dateHeaders.forEach(date => {
+        const record = student.attendance_records.find(r => r.date === date);
+        row[new Date(date).toLocaleDateString("id-ID", { day: '2-digit', month: 'short' })] = record?.status || "-";
       });
-      worksheetData.push(row);
+      return row;
     });
-
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const worksheet = XLSX.utils.json_to_sheet(body, { header: header });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi");
-
-    const bulan = monthNames[selectedMonth];
-    const tahun = selectedYear;
-    const namaFile = `Absensi_${className || "kelas"}_${bulan}_${tahun}.xlsx`;
-
-    XLSX.writeFile(workbook, namaFile);
+    XLSX.writeFile(workbook, `Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.xlsx`);
   };
-
-  // Export ke PDF (landscape + kolom nama lebih lebar)
+  
+  // Fungsi Export ke PDF
   const handleDownloadPDF = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const tableColumn: string[] = ["Nama Siswa", ...dateHeaders];
-    const tableRows: (string | number)[][] = [];
-
-    monitoringData.forEach((student) => {
-      const rowData: (string | number)[] = [student.name];
-      dateHeaders.forEach((date) => {
-        const record = student.attendance_records.find((r) => r.date === date);
-        rowData.push(record?.status || "-");
-      });
-      tableRows.push(rowData);
-    });
-
-    const bulan = monthNames[selectedMonth];
-    const tahun = selectedYear;
-    const judul = `Laporan Kehadiran ${className ? `Kelas ${className}` : ""} - ${bulan} ${tahun}`;
-    const namaFile = `Absensi_${className || "kelas"}_${bulan}_${tahun}.pdf`;
-
-    doc.text(judul, 14, 15);
-
+    const tableColumn = ["Nama Siswa", ...dateHeaders.map(d => new Date(d).toLocaleDateString("id-ID", { day: '2-digit' }))];
+    const tableRows = monitoringData.map(student => [student.name, ...dateHeaders.map(date => student.attendance_records.find(r => r.date === date)?.status || "-")]);
+    doc.text(`Laporan Kehadiran Kelas ${className} - ${monthNames[selectedMonth]} ${selectedYear}`, 14, 15);
     autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 25,
-      styles: { fontSize: 6 },
-      headStyles: { fillColor: [66, 66, 66] },
-      columnStyles: {
-        0: { cellWidth: 20 }, // kolom nama siswa lebih lebar
-      },
+      head: [tableColumn], body: tableRows, startY: 25,
+      styles: { fontSize: 6, cellPadding: 1 },
+      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+      columnStyles: { 0: { cellWidth: 35 } },
     });
-
-    doc.save(namaFile);
+    doc.save(`Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">
-        Monitoring Kehadiran {className ? `Kelas ${className}` : "..."}
-      </h1>
+    <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
+      <div className="bg-white p-6 rounded-xl shadow-md">
 
-      {/* Pilih bulan & tahun + tombol aksi */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border items-center">
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="w-full p-2 border rounded-md bg-white"
-          >
-            {monthNames.map((name, index) => (
-              <option key={index} value={index}>
-                {name}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="w-full p-2 border rounded-md bg-white"
-          >
-            {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex items-center gap-3 lg:justify-end flex-wrap">
-          <button
-            onClick={loadData}
-            className="flex items-center gap-2 bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
-          >
-            <RefreshCw size={18} />
-            <span>Refresh</span>
-          </button>
-          <button
-            onClick={handleDownloadExcel}
-            className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            <Download size={18} />
-            <span>Excel</span>
-          </button>
-          <button
-            onClick={handleDownloadPDF}
-            className="flex items-center gap-2 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-          >
-            <Download size={18} />
-            <span>PDF</span>
-          </button>
-          <Link href="/dashboard-monitoring">
-            <button className="flex items-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600">
-              <ArrowLeft size={18} />
+        {/* Header Halaman */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+              Monitoring Kehadiran {className ? `Kelas ${className}` : ""}
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Laporan Bulan: <strong>{monthNames[selectedMonth]} {selectedYear}</strong>
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+              <ArrowLeft size={16} />
               <span>Back</span>
-            </button>
-          </Link>
-          <Link href="/">
-            <button className="flex items-center gap-2 bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-              <Home size={18} />
+            </Link>
+            <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
+              <Home size={16} />
               <span>Home</span>
-            </button>
-          </Link>
+            </Link>
+          </div>
         </div>
-      </div>
 
-      {/* Tabel */}
-      {loading ? (
-        <p>Memuat data...</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full border-collapse border">
-            <thead className="bg-gray-100 sticky top-0 z-10">
-              <tr>
-                <th className="border p-2 text-left sticky left-0 bg-gray-100 z-20">
-                  Nama Siswa
-                </th>
-                {dateHeaders.map((date) => (
-                  <th key={date} className="border p-2 whitespace-nowrap">
-                    {new Date(date).toLocaleDateString("id-ID", {
-                      timeZone: "UTC",
-                      day: "2-digit",
-                      month: "short",
-                    })}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {monitoringData.length > 0 ? (
-                monitoringData.map((student) => (
-                  <tr key={student.student_id}>
-                    <td className="border p-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap">
-                      {student.name}
-                    </td>
-                    {dateHeaders.map((date) => {
-                      const record = student.attendance_records.find((r) => r.date === date);
-                      const status: AttendanceStatus = record?.status || "-";
-                      return (
-                        <td
-                          key={date}
-                          className={`border p-2 text-center ${getStatusColor(status)}`}
-                        >
-                          {status}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={dateHeaders.length + 1} className="text-center p-4">
-                    Tidak ada data siswa untuk ditampilkan pada bulan ini.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        {/* Panel Kontrol */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
+          <div className="flex flex-col sm:flex-row gap-2 items-center w-full md:w-auto">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm">
+                {monthNames.map((name, index) => <option key={index} value={index}>{name}</option>)}
+              </select>
+              <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm">
+                {Array.from({ length: 5 }, (_, i) => currentYear - i).map((year) => <option key={year} value={year}>{year}</option>)}
+              </select>
+            </div>
+            <button onClick={loadData} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm">
+              <RefreshCw size={16} />
+              <span>Lihat</span>
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={handleDownloadExcel} className="w-1/2 md:w-auto flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm">
+              <FileSpreadsheet size={16} />
+              <span>Excel</span>
+            </button>
+            <button onClick={handleDownloadPDF} className="w-1/2 md:w-auto flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm">
+              <FileText size={16} />
+              <span>PDF</span>
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Tabel Laporan */}
+        {loading ? (<p className="text-center text-gray-500 py-8">Memuat data laporan...</p>) : (
+          <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-100 text-gray-600">
+                <tr>
+                  <th className="p-3 text-left font-semibold sticky left-0 bg-gray-100 z-10 border-r">Nama Siswa</th>
+                  {dateHeaders.map((date) => (
+                    <th key={date} className="p-3 font-semibold whitespace-nowrap text-center border-l">
+                      {new Date(date).toLocaleDateString("id-ID", { timeZone: "UTC", day: "2-digit", month: "short" })}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {monitoringData.length > 0 ? (
+                  monitoringData.map((student) => (
+                    <tr key={student.student_id} className="border-b last:border-b-0">
+                      <td className="p-2 font-medium text-gray-800 sticky left-0 bg-white z-10 whitespace-nowrap border-r">{student.name}</td>
+                      {dateHeaders.map((date) => {
+                        const record = student.attendance_records.find((r) => r.date === date);
+                        const status: AttendanceStatus = record?.status || "-";
+                        return (
+                          <td key={date} className={`p-2 text-center border-l ${getStatusClasses(status)}`}>
+                            {status.charAt(0)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={dateHeaders.length + 1} className="text-center p-8 text-gray-500">
+                        <h3 className="text-lg font-semibold">Tidak Ada Data</h3>
+                        <p>Belum ada data kehadiran siswa pada periode ini.</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
