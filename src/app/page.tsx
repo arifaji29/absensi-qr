@@ -87,11 +87,14 @@ export default function HomePage() {
           />
         </div>
 
-        <h1 className="text-4xl md:text-3xl font-bold text-green-800">
-          SISTEM ABSENSI DAN MONITORING SISWA
+        <h1 className="text-4xl md:text-4xl font-bold text-green-800">
+          SIASTOR
         </h1>
+        <h2 className="text-lg font-semibold text-green-800">
+          Sistem Absensi dan Monitoring Siswa
+        </h2>
         <p className="mt-2 text-2xl font-semibold text-green-600">
-          TPQ MIFTAKHUL HUDA, WERDI
+          TPQ MIFTAKHUL HUDA WERDI
         </p>
         
         <div className="mt-8 flex justify-center items-center gap-4">
