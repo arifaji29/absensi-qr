@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 
@@ -13,37 +12,46 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const supabase = createClientComponentClient();
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/register-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ email, name, password }),
         }
+      );
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || 'Terjadi kesalahan tidak diketahui.');
       }
-    });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      // ==========================================================
-      // PERUBAHAN UTAMA: Logout setelah berhasil daftar
-      // ==========================================================
-      await supabase.auth.signOut();
-
-      // Beri notifikasi yang lebih jelas
-      alert("Pendaftaran berhasil! Silakan login dengan akun baru Anda.");
+      alert("Pendaftaran berhasil! Anda sekarang dapat login.");
       router.push("/login");
-    }
 
-    setLoading(false);
+      // ==========================================================
+      // PERBAIKAN UTAMA ADA DI SINI: Mengubah tipe 'any'
+      // ==========================================================
+    } catch (err: unknown) { // Ubah 'any' menjadi 'unknown'
+      // Tambahkan pemeriksaan untuk memastikan 'err' adalah sebuah Error
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Terjadi kesalahan yang tidak terduga.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
