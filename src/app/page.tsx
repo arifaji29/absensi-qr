@@ -109,16 +109,16 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition text-sm shadow-sm"
+                className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition text-sm shadow-sm"
               >
-                <LogIn size={16} />
+                <LogIn size={12} />
                 <span>Login</span>
               </Link>
               <Link
                 href="/register"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition text-sm"
+                className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition text-sm"
               >
-                <UserPlus size={16} />
+                <UserPlus size={12} />
                 <span>Daftar</span>
               </Link>
             </div>
