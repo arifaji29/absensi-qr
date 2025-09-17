@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from 'next/link';
 import { useRouter } from "next/navigation";
 
-
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -19,39 +18,37 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // ==========================================================
-      // PERUBAHAN UTAMA: Gunakan fetch API untuk kontrol penuh
-      // ==========================================================
       const response = await fetch(
-        // Pastikan URL env Anda sudah benar
         `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/register-user`,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            // Gunakan Anon Key untuk otorisasi
             'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
           },
           body: JSON.stringify({ email, name, password }),
         }
       );
 
-      // Ambil data JSON dari respons
       const responseData = await response.json();
 
-      // Jika respons GAGAL (status bukan 2xx), lempar error dengan pesan dari body
       if (!response.ok) {
-        // 'responseData.error' adalah pesan yang kita kirim dari Edge Function
         throw new Error(responseData.error || 'Terjadi kesalahan tidak diketahui.');
       }
 
-      // Jika respons SUKSES
       alert("Pendaftaran berhasil! Anda sekarang dapat login.");
       router.push("/login");
 
-    } catch (err: any) {
-      // Tangkap dan tampilkan error di UI
-      setError(err.message);
+      // ==========================================================
+      // PERBAIKAN UTAMA ADA DI SINI: Mengubah tipe 'any'
+      // ==========================================================
+    } catch (err: unknown) { // Ubah 'any' menjadi 'unknown'
+      // Tambahkan pemeriksaan untuk memastikan 'err' adalah sebuah Error
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Terjadi kesalahan yang tidak terduga.");
+      }
     } finally {
       setLoading(false);
     }
@@ -76,7 +73,7 @@ export default function RegisterPage() {
           />
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email (domain gurutpq/admintpq)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full border p-2 rounded"
