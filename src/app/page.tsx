@@ -88,7 +88,7 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-4xl md:text-4xl font-bold text-green-800">
-          SIASTOR
+          SIABSOR
         </h1>
         <h2 className="text-lg font-semibold text-green-800">
           Sistem Absensi dan Monitoring Siswa
