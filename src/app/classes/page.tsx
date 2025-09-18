@@ -3,17 +3,18 @@
 import { useEffect, useState, useCallback } from "react";
 import { ArrowLeft, Home, Plus } from "lucide-react";
 import Link from "next/link";
+import { Pencil, Trash2 } from "lucide-react";
 
 // Tipe data untuk pengajar dan kelas
-type Teacher = { 
-  id: string; 
-  name: string; 
+type Teacher = {
+  id: string;
+  name: string;
 };
 
-type ClassWithTeachers = { 
-  id: string; 
-  name: string; 
-  teachers: Teacher[]; 
+type ClassWithTeachers = {
+  id: string;
+  name: string;
+  teachers: Teacher[];
 };
 
 export default function ClassesPage() {
@@ -168,13 +169,13 @@ export default function ClassesPage() {
 
         {/* Tombol Aksi Utama */}
         <div className="mb-6">
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
-            >
-              <Plus size={18} />
-              <span>Tambah Kelas Baru</span>
-            </button>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm"
+          >
+            <Plus size={18} />
+            <span>Tambah Kelas Baru</span>
+          </button>
         </div>
 
         {/* Modal Tambah Kelas */}
@@ -246,10 +247,27 @@ export default function ClassesPage() {
                 {classes.map((cls) => (
                   <tr key={cls.id} className="hover:bg-gray-50 border-b last:border-b-0">
                     <td className="p-4 font-medium text-gray-900 whitespace-nowrap">{cls.name}</td>
-                    <td className="p-4 text-gray-700">{cls.teachers.length > 0 ? cls.teachers.map((t) => t.name).join(", ") : <span className="text-gray-400">Belum ada</span>}</td>
-                    <td className="p-4 text-center space-x-2">
-                      <button onClick={() => openEditModal(cls)} className="px-3 py-1 text-xs font-semibold bg-yellow-500 text-white rounded-md hover:bg-yellow-600">Edit</button>
-                      <button onClick={() => handleDelete(cls.id)} className="px-3 py-1 text-xs font-semibold bg-red-600 text-white rounded-md hover:bg-red-700">Hapus</button>
+                    <td className="p-4 text-gray-700">
+                      {cls.teachers.length > 0 ? cls.teachers.map((t) => t.name).join(", ") : <span className="text-gray-400">Belum ada</span>}
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => openEditModal(cls)}
+                          className="p-2 bg-yellow-500 text-white rounded-full hover:bg-yellow-600 transition-colors"
+                          title="Edit Kelas"
+                        >
+                          <Pencil size={16} />
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(cls.id)}
+                          className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                          title="Hapus Kelas"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

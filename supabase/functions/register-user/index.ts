@@ -18,7 +18,7 @@ serve(async (req) => {
 
     // Logika validasi untuk format email 'gurutpq'/'admintpq'
     if (!email.includes("gurutpq") && !email.includes("admintpq")) {
-      throw new Error("Anda bukan guru atau admin, silahkan hubungi admin untuk proses register");
+      throw new Error("Anda tidak diizinkan mendaftar, silahkan hubungi admin untuk proses pendaftaran akun");
     }
 
     const supabaseAdmin = createClient(

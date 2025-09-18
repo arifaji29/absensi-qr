@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, Plus } from "lucide-react";
+import { ArrowLeft, Home, Plus, Pencil, Trash2 } from "lucide-react";
+
 
 // Tipe data untuk pengajar
 type Teacher = {
@@ -111,7 +112,7 @@ export default function TeachersPage() {
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
       <div className="bg-white p-6 rounded-xl shadow-md">
-        
+
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
@@ -182,9 +183,25 @@ export default function TeachersPage() {
                     <td className="p-4 whitespace-nowrap">{teacher.no_induk}</td>
                     <td className="p-4 font-medium text-gray-800 whitespace-nowrap">{teacher.name}</td>
                     <td className="p-4 text-gray-600 whitespace-nowrap">{teacher.email || "-"}</td>
-                    <td className="p-4 text-center space-x-2">
-                      <button onClick={() => openModalForEdit(teacher)} className="px-3 py-1 text-xs font-semibold bg-yellow-500 text-white rounded-md hover:bg-yellow-600">Edit</button>
-                      <button onClick={() => handleDelete(teacher.id)} className="px-3 py-1 text-xs font-semibold bg-red-600 text-white rounded-md hover:bg-red-700">Hapus</button>
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                   
+                        <button
+                          onClick={() => openModalForEdit(teacher)}
+                          className="p-2 bg-yellow-500 text-white rounded-full hover:bg-yellow-600 transition-colors"
+                          title="Edit Pengajar"
+                        >
+                          <Pencil size={16} />
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(teacher.id)}
+                          className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
+                          title="Hapus Pengajar"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -20,7 +20,7 @@ type Teacher = {
   name: string;
 };
 
-// Fungsi helper untuk mendapatkan tanggal hari ini dalam format YYYY-MM-DD
+// Fungsi helper
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 
 export default function AttendancePage() {
@@ -183,26 +183,27 @@ export default function AttendancePage() {
           </div>
         </div>
         
-        {/* Panel Kontrol atau Status Validasi */}
-        {isValidated ? (
-          <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-r-lg flex items-center gap-4">
-            <CheckCircle className="h-8 w-8 text-green-600"/>
-            <div>
-              <p className="font-bold">Absensi Sesi Ini Telah Divalidasi</p>
-              <p className="text-sm">Data dikunci oleh <strong>{validatorName || "N/A"}</strong> dan tidak dapat diubah lagi.</p>
-            </div>
+        {/* === START PERBAIKAN === */}
+        {/* Panel Kontrol yang Selalu Tampil */}
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
+          {/* Bagian Kiri: Pilih Tanggal (selalu ada) */}
+          <div className="w-full md:w-auto">
+            <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
+            <input 
+              type="date" 
+              id="attendance-date" 
+              value={selectedDate} 
+              onChange={(e) => setSelectedDate(e.target.value)} 
+              max={getTodayString()} 
+              className="p-2 border rounded-md bg-white w-full" 
+              disabled={loading} 
+            />
           </div>
-        ) : (
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
-            {/* Bagian Kiri: Pilih Tanggal */}
-            <div className="w-full md:w-auto">
-              <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
-              <input type="date" id="attendance-date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} max={getTodayString()} className="p-2 border rounded-md bg-white w-full" disabled={loading} />
-            </div>
 
-            {/* Bagian Kanan: Tombol Aksi */}
+          {/* Bagian Kanan: Tombol Aksi (hanya jika belum divalidasi) */}
+          {!isValidated && (
             <div className="w-full md:w-auto flex flex-col gap-2">
-              <button onClick={() => setIsScannerOpen(true)} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm shadow-sm">
+              <button onClick={() => setIsScannerOpen(true)} className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-400 font-semibold text-sm shadow-sm">
                 <QrCode size={16} />
                 <span>Scan QR</span>
               </button>
@@ -217,29 +218,40 @@ export default function AttendancePage() {
                 </button>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Tampilkan Pesan Validasi Jika Sudah Divalidasi */}
+        {isValidated && (
+          <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-r-lg flex items-center gap-4">
+            <CheckCircle className="h-8 w-8 text-green-600"/>
+            <div>
+              <p className="font-bold">Absensi Sesi Ini Telah Divalidasi</p>
+              <p className="text-sm">Data dikunci oleh <strong>{validatorName || "N/A"}</strong> dan tidak dapat diubah lagi.</p>
+            </div>
           </div>
         )}
-        
-        {/* ... (Sisa kode untuk Modal dan Tabel tetap sama) ... */}
+        {/* === END PERBAIKAN === */}
+
         {isValidationModalOpen && (
-           <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
-             <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-               <h2 className="text-2xl font-bold mb-2">Konfirmasi Validasi</h2>
-               <p className="text-gray-600 mb-6">Pilih pengajar yang bertanggung jawab untuk mengunci data absensi hari ini.</p>
-               <div className="space-y-3 max-h-60 overflow-y-auto border-t border-b py-4">
-                 {classTeachers.map((teacher) => (
-                   <label key={teacher.id} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 transition-colors">
-                     <input type="radio" name="validator" value={teacher.id} checked={selectedValidatorId === teacher.id} onChange={(e) => setSelectedValidatorId(e.target.value)} className="h-5 w-5 text-blue-600 focus:ring-blue-500" />
-                     <span className="ml-4 font-medium text-gray-800">{teacher.name}</span>
-                   </label>
-                 ))}
-               </div>
-               <div className="flex justify-end gap-4 pt-6">
-                 <button type="button" onClick={() => setIsValidationModalOpen(false)} className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">Batal</button>
-                 <button onClick={handleConfirmValidation} className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700">Konfirmasi</button>
+             <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
+               <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+                 <h2 className="text-2xl font-bold mb-2">Konfirmasi Validasi</h2>
+                 <p className="text-gray-600 mb-6">Pilih pengajar yang bertanggung jawab untuk mengunci data absensi hari ini.</p>
+                 <div className="space-y-3 max-h-60 overflow-y-auto border-t border-b py-4">
+                   {classTeachers.map((teacher) => (
+                     <label key={teacher.id} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 transition-colors">
+                       <input type="radio" name="validator" value={teacher.id} checked={selectedValidatorId === teacher.id} onChange={(e) => setSelectedValidatorId(e.target.value)} className="h-5 w-5 text-blue-600 focus:ring-blue-500" />
+                       <span className="ml-4 font-medium text-gray-800">{teacher.name}</span>
+                     </label>
+                   ))}
+                 </div>
+                 <div className="flex justify-end gap-4 pt-6">
+                   <button type="button" onClick={() => setIsValidationModalOpen(false)} className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">Batal</button>
+                   <button onClick={handleConfirmValidation} className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700">Konfirmasi</button>
+                 </div>
                </div>
              </div>
-           </div>
         )}
 
         {isScannerOpen && (

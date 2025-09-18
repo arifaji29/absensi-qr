@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import Link from 'next/link'; // 1. Import Link dari Next.js
+import Link from 'next/link';
+import Image from 'next/image'; // 1. Impor komponen Image
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -31,17 +34,45 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-green-50">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-green-50 p-4">
+      
+      {/* 2. Tambahkan Logo Lingkaran */}
+      <div className="mb-4"> {/* Menambahkan margin bawah untuk jarak */}
+          <div className="relative w-17 h-17 rounded-full overflow-hidden flex items-center justify-center shadow-md">
+            <div className="w-[70px] h-[70px] rounded-full overflow-hidden flex items-center justify-center">
+              <Image
+                src="/logoTPQ.png"
+                alt="Logo"
+                width={70}
+                height={70}
+                className="rounded-full object-cover"
+              />
+            </div>
+          </div>
+      </div>
+
+      {/* 3. Blok header dari halaman utama */}
+      <div className="text-center mb-5">
+        <h1 className="text-3xl md:text-4xl font-bold text-green-800">
+          SIABSOR
+        </h1>
+        <h2 className="text-md sm:text-lg font-semibold text-green-800 mt-1">
+          Sistem Absensi dan Monitoring Siswa
+        </h2>
+        <p className="mt-2 text-xl sm:text-2xl font-semibold text-green-600">
+          TPQ MIFTAKHUL HUDA WERDI
+        </p>
+      </div>
+
+      {/* 4. Formulir login */}
       <form
         onSubmit={handleLogin}
-        className="bg-white p-8 rounded-lg shadow-lg w-96 space-y-4"
+        className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md space-y-4"
       >
-        <h1 className="text-xl font-bold text-green-700 text-center">Login</h1>
+        <h2 className="text-2xl font-bold text-green-700 text-center">Login</h2>
         
-        {/* 2. Logika cerdas untuk menampilkan pesan error */}
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-center text-sm">
-            {/* Cek apakah error karena kredensial tidak valid */}
             {error.toLowerCase().includes("invalid login credentials") ? (
               <span>
                 Email atau password salah.
@@ -52,7 +83,6 @@ export default function LoginPage() {
                 </Link>
               </span>
             ) : (
-              // Tampilkan pesan error umum jika bukan karena kredensial
               <span>{error}</span>
             )}
           </div>
@@ -63,25 +93,36 @@ export default function LoginPage() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
           required
         />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border p-2 rounded"
-          required
-        />
+        
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full border p-2 rounded pr-10 focus:ring-2 focus:ring-green-500 focus:outline-none"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+            aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
+
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition-colors"
         >
           Login
         </button>
 
-        {/* 3. Link pendaftaran permanen untuk UX yang lebih baik */}
         <div className="text-center text-sm text-gray-600 pt-2">
             Belum punya akun?{' '}
             <Link href="/register" className="font-semibold text-green-600 hover:underline">
@@ -92,3 +133,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

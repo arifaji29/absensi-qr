@@ -177,7 +177,7 @@ export default function AttendanceMonitoringPage() {
             </div>
             <button onClick={loadData} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm">
               <RefreshCw size={16} />
-              <span>Lihat</span>
+              <span>Refresh Data</span>
             </button>
           </div>
           <div className="flex items-center gap-2">

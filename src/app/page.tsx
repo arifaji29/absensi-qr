@@ -89,7 +89,7 @@ export default function HomePage() {
               />
             </div>
           </div>
-          <span className="text-sm font-semibold text-green-800">SIABSOR v.2.0</span>
+          <span className="text-sm font-semibold text-green-800">SIABSOR v.1.0</span>
         </div>
         <div className="flex items-center gap-2">
           {session ? (

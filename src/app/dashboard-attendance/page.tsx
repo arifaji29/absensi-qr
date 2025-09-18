@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, Users } from "lucide-react";
+// Perubahan: Mengganti ikon Users dengan BarChart
+import { ArrowLeft, Home, BarChart } from "lucide-react";
 
 // Tipe data
 type Teacher = { 
@@ -65,13 +66,16 @@ export default function AttendanceDashboard() {
           </div>
         </div>
 
+        {/* === START PERUBAHAN === */}
         {/* Tombol Aksi Navigasi */}
         <div className="mb-6">
-          <Link href="/dashboard-students" className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-sm">
-            <Users size={18} />
-            <span>Lihat Dashboard Siswa</span>
+          <Link href="/dashboard-monitoring" className="inline-flex items-center gap-2 bg-teal-600 text-white px-5 py-2 rounded-lg hover:bg-teal-700 transition-colors font-semibold shadow-sm">
+            <BarChart size={18} />
+            <span>Lihat Dashboard Monitoring</span>
           </Link>
         </div>
+        {/* === END PERUBAHAN === */}
+
 
         {/* Tabel Data Kelas */}
         {loading ? (
@@ -105,11 +109,11 @@ export default function AttendanceDashboard() {
               </table>
             ) : (
               <div className="text-center py-12 px-6 bg-gray-50 rounded-lg">
-                 <h3 className="text-lg font-semibold text-gray-700">Belum Ada Kelas</h3>
-                 <p className="text-gray-500 mt-2">Silakan tambahkan data kelas terlebih dahulu di halaman Manajemen Kelas.</p>
-                 <Link href="/classes" className="mt-4 inline-block px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
+                  <h3 className="text-lg font-semibold text-gray-700">Belum Ada Kelas</h3>
+                  <p className="text-gray-500 mt-2">Silakan tambahkan data kelas terlebih dahulu di halaman Manajemen Kelas.</p>
+                  <Link href="/classes" className="mt-4 inline-block px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
                     Pergi ke Manajemen Kelas
-                 </Link>
+                  </Link>
               </div>
             )}
           </div>
