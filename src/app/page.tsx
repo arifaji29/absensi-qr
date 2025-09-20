@@ -16,7 +16,7 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
 
-// Kumpulan Ikon SVG (Tidak ada perubahan di sini)
+// Kumpulan Ikon SVG
 const IconKelas = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3H8v4h8V3z" /></svg>
 );
@@ -33,11 +33,19 @@ const IconMonitoring = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
 );
 
-// 2. DATA UNTUK SLIDER (Ganti dengan path gambar Anda)
 const sliderImages = [
     { id: 1, src: "/images/info1.jpg", alt: "Informasi Penerimaan Santri Baru" },
     { id: 2, src: "/images/info2.jpg", alt: "Jadwal Kegiatan TPQ" },
     { id: 3, src: "/images/info3.jpg", alt: "Pengumuman Libur" },
+];
+
+// === PERUBAHAN 1: Membuat struktur data untuk semua menu ===
+const menuItems = [
+    { id: 'kelas', title: 'Kelas', description: 'Kelola data kelas dan pengaturan.', icon: <IconKelas />, href: '/classes', isProtected: true },
+    { id: 'siswa', title: 'Siswa', description: 'Kelola data siswa TPQ.', icon: <IconSiswa />, href: '/dashboard-students', isProtected: true },
+    { id: 'absensi', title: 'Absensi', description: 'Mulai sesi absensi & validasi kehadiran.', icon: <IconPresensi />, href: '/dashboard-attendance', isProtected: true },
+    { id: 'pengajar', title: 'Pengajar', description: 'Kelola data pengajar di kelas.', icon: <IconPengajar />, href: '/teachers', isProtected: true },
+    { id: 'monitoring', title: 'Monitoring', description: 'Pantau laporan siswa (kehadiran, nilai).', icon: <IconMonitoring />, href: '/dashboard-monitoring', isProtected: false },
 ];
 
 
@@ -47,13 +55,12 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Ambil sesi awal saat komponen dimuat
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
 
@@ -70,8 +77,12 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    // Refresh halaman untuk membersihkan state dan memperbarui UI
     router.refresh();
   };
+
+  // === PERUBAHAN 2: Filter menu berdasarkan status login ===
+  const displayedMenus = session ? menuItems : menuItems.filter(item => !item.isProtected);
 
   return (
     <main className="relative flex min-h-screen flex-col items-center bg-green-50/50 p-4 sm:p-8 text-center">
@@ -109,14 +120,14 @@ export default function HomePage() {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="flex items-center gap-2 px-2 py-1 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition text-sm shadow-sm"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition text-sm shadow-sm"
               >
                 <LogIn size={12} />
                 <span>Login</span>
               </Link>
               <Link
                 href="/register"
-                className="flex items-center gap-2 px-2 py-1 rounded-lg bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition text-sm"
+                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition text-sm"
               >
                 <UserPlus size={12} />
                 <span>Daftar</span>
@@ -126,7 +137,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Konten Utama */}
       <div className="w-full max-w-6xl mt-24 sm:mt-28">
         <h1 className="text-3xl md:text-4xl font-bold text-green-800">
           SIABSOR
@@ -138,7 +148,6 @@ export default function HomePage() {
           TPQ MIFTAKHUL HUDA WERDI
         </p>
 
-        {/* 3. Slider/Carousel Informasi */}
         <div className="w-full max-w-4xl mx-auto mt-8 relative">
           <Swiper
             modules={[Navigation, Pagination, Autoplay]}
@@ -164,13 +173,12 @@ export default function HomePage() {
                     alt={image.alt}
                     fill
                     className="object-cover"
-                    priority={image.id === 1} // Prioritaskan load gambar pertama
+                    priority={image.id === 1}
                   />
                 </div>
               </SwiperSlide>
             ))}
           </Swiper>
-          {/* Tombol Navigasi Kustom */}
           <div className="swiper-button-prev absolute top-1/2 left-2 -translate-y-1/2 z-10 p-2 bg-white/50 hover:bg-white/80 rounded-full cursor-pointer transition">
              <ChevronLeft className="text-green-800" />
           </div>
@@ -179,14 +187,32 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Menu Aplikasi */}
-        <div className="mt-12 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-8">
-            {/* ... sisa kode menu (tidak ada perubahan) ... */}
-            <div onClick={() => handleProtectedRoute("/classes")} className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"><div className="text-green-500 group-hover:scale-110 transition-transform"><IconKelas /></div><h2 className="text-xl font-semibold text-green-900">Kelas</h2><p className="text-sm text-gray-500">Kelola data kelas dan pengaturan.</p></div>
-            <div onClick={() => handleProtectedRoute("/dashboard-students")} className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"><div className="text-green-500 group-hover:scale-110 transition-transform"><IconSiswa /></div><h2 className="text-xl font-semibold text-green-900">Siswa</h2><p className="text-sm text-gray-500">Kelola data siswa TPQ.</p></div>
-            <div onClick={() => handleProtectedRoute("/dashboard-attendance")} className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"><div className="text-green-500 group-hover:scale-110 transition-transform"><IconPresensi /></div><h2 className="text-xl font-semibold text-green-900">Absensi</h2><p className="text-sm text-gray-500">Mulai sesi absensi & validasi kehadiran.</p></div>
-            <div onClick={() => handleProtectedRoute("/teachers")} className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"><div className="text-green-500 group-hover:scale-110 transition-transform"><IconPengajar /></div><h2 className="text-xl font-semibold text-green-900">Pengajar</h2><p className="text-sm text-gray-500">Kelola data pengajar di kelas.</p></div>
-            <Link href="/dashboard-monitoring" className="block col-span-2 sm:col-span-1"><div className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"><div className="text-green-500 group-hover:scale-110 transition-transform"><IconMonitoring /></div><h2 className="text-xl font-semibold text-green-900">Monitoring</h2><p className="text-sm text-gray-500">Pantau laporan siswa (kehadiran, pembelajaran, nilai).</p></div></Link>
+        {/* === PERUBAHAN 3: Render menu yang sudah difilter === */}
+        <div className={`mt-12 grid gap-4 md:gap-8 ${session ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:w-1/2 mx-auto'}`}>
+          {displayedMenus.map((menu) => {
+            const cardContent = (
+              <div 
+                className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full"
+              >
+                <div className="text-green-500 group-hover:scale-110 transition-transform">
+                  {menu.icon}
+                </div>
+                <h2 className="text-xl font-semibold text-green-900">{menu.title}</h2>
+                <p className="text-sm text-gray-500 text-center">{menu.description}</p>
+              </div>
+            );
+
+            // Jika menu dilindungi, gunakan onClick. Jika tidak, gunakan Link.
+            return menu.isProtected ? (
+              <div key={menu.id} onClick={() => handleProtectedRoute(menu.href)}>
+                {cardContent}
+              </div>
+            ) : (
+              <Link key={menu.id} href={menu.href} className="block">
+                {cardContent}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </main>

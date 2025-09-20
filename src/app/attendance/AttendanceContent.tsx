@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Link from "next/link";
-import { ArrowLeft, Home, QrCode, RotateCcw, ShieldCheck, CheckCircle } from "lucide-react";
+// 1. Impor ikon baru
+import { ArrowLeft, Home, QrCode, RotateCcw, ShieldCheck, CheckCircle, CalendarOff } from "lucide-react";
 
 // Tipe data
 type Attendance = {
@@ -93,6 +94,23 @@ export default function AttendancePage() {
     }
   }, [classId, selectedDate, fetchData]);
 
+  // 2. Fungsi baru untuk meliburkan semua siswa
+  const handleSetHoliday = useCallback(async () => {
+    if (!confirm(`Anda yakin ingin meliburkan seluruh siswa kelas ${className} pada tanggal ${selectedDate}? Aksi ini akan mengubah status semua siswa menjadi "Libur".`)) return;
+    try {
+      const res = await fetch(`/api/attendance/holiday`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class_id: classId, date: selectedDate }),
+      });
+      if (!res.ok) throw new Error("Gagal mengubah status menjadi libur");
+      alert("Seluruh siswa berhasil diliburkan!");
+      await fetchData(selectedDate);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Terjadi kesalahan saat meliburkan siswa.");
+    }
+  }, [classId, selectedDate, className, fetchData]);
+
   const handleReset = useCallback(async () => {
     if (!confirm(`Anda yakin ingin mereset seluruh absensi untuk kelas ${className} pada tanggal ${selectedDate}?`)) return;
     try {
@@ -153,7 +171,8 @@ export default function AttendancePage() {
     return () => { scanner.clear().catch(console.error) };
   }, [isScannerOpen, attendance, handleStatusChange]);
 
-  const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha"];
+  // 3. Tambahkan "Libur" ke status options
+  const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha", "Libur"];
   
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta'});
 
@@ -183,10 +202,7 @@ export default function AttendancePage() {
           </div>
         </div>
         
-        {/* === START PERBAIKAN === */}
-        {/* Panel Kontrol yang Selalu Tampil */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
-          {/* Bagian Kiri: Pilih Tanggal (selalu ada) */}
           <div className="w-full md:w-auto">
             <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
             <input 
@@ -200,13 +216,19 @@ export default function AttendancePage() {
             />
           </div>
 
-          {/* Bagian Kanan: Tombol Aksi (hanya jika belum divalidasi) */}
           {!isValidated && (
+            // 4. Tambahkan tombol Liburkan
             <div className="w-full md:w-auto flex flex-col gap-2">
-              <button onClick={() => setIsScannerOpen(true)} className="w-full flex items-center justify-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-400 font-semibold text-sm shadow-sm">
-                <QrCode size={16} />
-                <span>Scan QR</span>
-              </button>
+               <div className="grid grid-cols-2 gap-2">
+                 <button onClick={() => setIsScannerOpen(true)} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm shadow-sm">
+                    <QrCode size={16} />
+                    <span>Scan QR</span>
+                  </button>
+                  <button onClick={handleSetHoliday} className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm shadow-sm">
+                    <CalendarOff size={16} />
+                    <span>Liburkan</span>
+                  </button>
+               </div>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
                   <RotateCcw size={16} />
@@ -221,7 +243,6 @@ export default function AttendancePage() {
           )}
         </div>
 
-        {/* Tampilkan Pesan Validasi Jika Sudah Divalidasi */}
         {isValidated && (
           <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-r-lg flex items-center gap-4">
             <CheckCircle className="h-8 w-8 text-green-600"/>
@@ -231,7 +252,6 @@ export default function AttendancePage() {
             </div>
           </div>
         )}
-        {/* === END PERBAIKAN === */}
 
         {isValidationModalOpen && (
              <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
@@ -277,12 +297,23 @@ export default function AttendancePage() {
               </thead>
               <tbody>
                 {attendance.map((a) => (
-                  <tr key={a.student_id} className={`border-b last:border-b-0 ${a.status === 'Hadir' ? 'bg-green-50' : a.status !== 'Belum Hadir' ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
+                  // 5. Tambahkan styling untuk status "Libur"
+                  <tr key={a.student_id} className={`border-b last:border-b-0 ${a.status === 'Hadir' ? 'bg-green-50' : a.status === 'Libur' ? 'bg-gray-100 text-gray-500' : a.status !== 'Belum Hadir' ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
                     <td className="p-3 whitespace-nowrap">{a.nis}</td>
                     <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{a.name}</td>
                     <td className="p-3">
-                      <select value={a.status} onChange={(e) => handleStatusChange(a.student_id, e.target.value)} className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed disabled:text-gray-500 appearance-none" disabled={isValidated}>
-                        {statusOptions.map((opt) => (opt === "Hadir" && a.status !== "Hadir" ? null : <option key={opt} value={opt}>{opt}</option>))}
+                      <select 
+                        value={a.status} 
+                        onChange={(e) => handleStatusChange(a.student_id, e.target.value)} 
+                        className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed disabled:text-gray-500 appearance-none" 
+                        disabled={isValidated || a.status === 'Libur'}
+                      >
+                        {/* 6. Sembunyikan "Libur" dari opsi manual */}
+                        {statusOptions.map((opt) => {
+                          if (opt === "Libur" && a.status !== "Libur") return null;
+                          if (opt === "Hadir" && a.status !== "Hadir") return null;
+                          return <option key={opt} value={opt}>{opt}</option>
+                        })}
                       </select>
                     </td>
                     <td className="p-3 whitespace-nowrap text-gray-600">{a.checked_in_at ? new Date(a.checked_in_at).toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta" }) : "-"}</td>
@@ -296,3 +327,4 @@ export default function AttendancePage() {
     </div>
   );
 }
+

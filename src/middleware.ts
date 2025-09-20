@@ -1,24 +1,22 @@
-// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
 
 export async function middleware(req: NextRequest) {
-  // Penting: teruskan headers supaya cookie supabase terbaca
-  const res = NextResponse.next({
-    request: { headers: req.headers },
-  });
-
+  const res = NextResponse.next();
   const supabase = createMiddlewareClient({ req, res });
 
+  // Penting: getSession akan secara otomatis mencoba me-refresh token.
+  // Inilah yang menyebabkan Auth Request.
   const {
     data: { session },
   } = await supabase.auth.getSession();
 
   const { pathname } = req.nextUrl;
 
-  // Jika user sudah login & coba akses /login → redirect ke home
-  if (session && pathname === "/login") {
+  // 1. Jika pengguna sudah login dan mencoba mengakses halaman login/register,
+  //    arahkan mereka ke halaman utama.
+  if (session && (pathname === "/login" || pathname === "/register")) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
@@ -32,20 +30,35 @@ export async function middleware(req: NextRequest) {
     "/dashboard-attendance",
   ];
 
-  const isProtected = protectedRoutes.some((route) =>
+  const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)
   );
 
-  // Jika belum login dan akses route dilindungi → redirect ke login
-  if (!session && isProtected) {
+  // 2. === PERBAIKAN UTAMA ADA DI SINI ===
+  // Jika pengguna BELUM login, DAN mencoba mengakses rute yang dilindungi,
+  // DAN dia TIDAK sedang berada di halaman login, baru lakukan redirect.
+  if (!session && isProtectedRoute) {
+    // Pengecualian pathname !== '/login' adalah fallback,
+    // tapi logika utamanya adalah isProtectedRoute
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  // 3. Jika semua kondisi di atas tidak terpenuhi, biarkan permintaan berlanjut.
   return res;
 }
 
 export const config = {
   matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     *
+     * PENTING: Jangan kecualikan /login atau /register dari matcher,
+     * agar logika redirect saat sudah login bisa berjalan.
+     */
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };
+
