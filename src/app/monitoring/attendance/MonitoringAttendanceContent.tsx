@@ -9,7 +9,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 // Tipe data
-type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "Libur" | "-";
+type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "Libur" | "-" | "Belum Hadir";
 type AttendanceRecord = { date: string; status: AttendanceStatus };
 type MonitoringData = {
   student_id: string;
@@ -28,7 +28,6 @@ type AttendanceStats = {
   percentage: number;
 };
 
-// === PERBAIKAN ESLINT 1: Definisikan tipe untuk jsPDF yang diperluas ===
 interface jsPDFWithLastTable extends jsPDF {
   lastAutoTable: {
     finalY: number;
@@ -146,11 +145,14 @@ export default function AttendanceMonitoringPage() {
     }
 
     return monitoringData.map(student => {
-      const counts = { Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0 };
+      const counts: { [key in "Hadir" | "Sakit" | "Izin" | "Alpha" | "Libur"]: number } = { Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0 };
       
+      // === PERBAIKAN TYPE ERROR DI SINI ===
       student.attendance_records.forEach(record => {
-        if (record.status && record.status !== '-' && record.status !== 'Belum Hadir') {
-          counts[record.status]++;
+        const status = record.status;
+        // Periksa secara eksplisit apakah status adalah salah satu yang ingin kita hitung
+        if (status === "Hadir" || status === "Sakit" || status === "Izin" || status === "Alpha" || status === "Libur") {
+          counts[status]++;
         }
       });
       
@@ -206,7 +208,6 @@ export default function AttendanceMonitoringPage() {
         }
       },
     });
-    // === PERBAIKAN ESLINT 2: Gunakan tipe yang sudah didefinisikan ===
     const finalY = (doc as jsPDFWithLastTable).lastAutoTable.finalY;
     doc.setFontSize(8); doc.setTextColor(100);
     doc.text("Keterangan: H = Hadir, S = Sakit, I = Izin, A = Alpha, L = Libur", 14, finalY + 10);
@@ -251,7 +252,6 @@ export default function AttendanceMonitoringPage() {
     });
     doc.save(`Statistik_Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
   };
-
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
