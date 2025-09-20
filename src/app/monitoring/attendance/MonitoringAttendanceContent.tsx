@@ -28,6 +28,13 @@ type AttendanceStats = {
   percentage: number;
 };
 
+// === PERBAIKAN ESLINT 1: Definisikan tipe untuk jsPDF yang diperluas ===
+interface jsPDFWithLastTable extends jsPDF {
+  lastAutoTable: {
+    finalY: number;
+  };
+}
+
 const monthNames = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
@@ -199,7 +206,8 @@ export default function AttendanceMonitoringPage() {
         }
       },
     });
-    const finalY = (doc as any).lastAutoTable.finalY;
+    // === PERBAIKAN ESLINT 2: Gunakan tipe yang sudah didefinisikan ===
+    const finalY = (doc as jsPDFWithLastTable).lastAutoTable.finalY;
     doc.setFontSize(8); doc.setTextColor(100);
     doc.text("Keterangan: H = Hadir, S = Sakit, I = Izin, A = Alpha, L = Libur", 14, finalY + 10);
     doc.save(`Absensi_Harian_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
@@ -287,7 +295,6 @@ export default function AttendanceMonitoringPage() {
             </button>
           </div>
           
-          {/* === PERUBAHAN UTAMA: Layout Tombol Dibuat Responsif === */}
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
             {viewMode === 'daily' ? (
                  <button onClick={() => setViewMode('stats')} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm">
