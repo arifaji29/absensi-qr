@@ -125,39 +125,54 @@ export default function AttendanceMonitoringPage() {
   const statisticsData: AttendanceStats[] = useMemo(() => {
     if (!monitoringData || monitoringData.length === 0) return [];
     
-    let effectiveDays = 0;
+    // Tentukan jumlah hari yang telah berlalu dalam bulan yang dipilih
+    let daysPassed = 0;
     const today = new Date();
-    const currentDay = today.getDate();
+    // Set jam ke nol untuk perbandingan tanggal yang akurat
+    today.setHours(0, 0, 0, 0); 
     
     if (selectedYear < today.getFullYear() || (selectedYear === today.getFullYear() && selectedMonth < today.getMonth())) {
-      effectiveDays = dateHeaders.length;
+      // Jika bulan yang dipilih sudah lewat, hitung semua hari dalam bulan itu
+      daysPassed = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     } else if (selectedYear === today.getFullYear() && selectedMonth === today.getMonth()) {
-      effectiveDays = currentDay;
+      // Jika bulan ini, hitung hari hingga hari ini
+      daysPassed = today.getDate();
     } else {
-      effectiveDays = 0;
+      // Jika bulan depan, belum ada hari yang berlalu
+      daysPassed = 0;
     }
-    
-    if (effectiveDays === 0) {
+
+    if (daysPassed === 0) {
       return monitoringData.map(student => ({
-        ...student,
-        Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0, percentage: 0
+        ...student, Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0, percentage: 0,
       }));
     }
 
     return monitoringData.map(student => {
       const counts: { [key in "Hadir" | "Sakit" | "Izin" | "Alpha" | "Libur"]: number } = { Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0 };
-      
-      // === PERBAIKAN TYPE ERROR DI SINI ===
-      student.attendance_records.forEach(record => {
-        const status = record.status;
-        // Periksa secara eksplisit apakah status adalah salah satu yang ingin kita hitung
+      let holidayCount = 0;
+
+      // Iterasi hanya sebanyak hari yang telah berlalu
+      for (let i = 0; i < daysPassed; i++) {
+        const currentDate = dateHeaders[i];
+        const record = student.attendance_records.find(r => r.date === currentDate);
+        const status = record?.status;
+
         if (status === "Hadir" || status === "Sakit" || status === "Izin" || status === "Alpha" || status === "Libur") {
           counts[status]++;
+          if (status === "Libur") {
+            holidayCount++;
+          }
         }
-      });
+      }
       
-      const presentAndHoliday = counts.Hadir + counts.Libur;
-      const percentage = (presentAndHoliday / effectiveDays) * 100;
+      // Pembagi adalah total hari yang telah dilalui DIKURANGI hari libur
+      const denominator = daysPassed - holidayCount;
+      // Penghitung hanya jumlah Hadir
+      const numerator = counts.Hadir;
+      
+      // Hitung persentase, hindari pembagian dengan nol
+      const percentage = denominator > 0 ? (numerator / denominator) * 100 : 0;
       
       return {
         student_id: student.student_id,
