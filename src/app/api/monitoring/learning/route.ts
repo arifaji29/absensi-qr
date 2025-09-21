@@ -18,15 +18,16 @@ type FormattedJournal = {
   teacher_name: string;
 };
 
-// === PERBAIKAN 1: Buat tipe untuk data mentah dari Supabase ===
+// === PERBAIKAN 1: Sesuaikan tipe agar cocok dengan hasil join Supabase ===
+// Tipe ini sekarang mendefinisikan 'class' dan 'teacher' sebagai array dari objek.
 type RawJournalData = {
     id: string;
     materi: string;
     deskripsi: string;
     catatan: string | null;
     date: string;
-    class: { name: string } | null;
-    teacher: { name: string } | null;
+    class: { name: string }[] | null;
+    teacher: { name: string }[] | null;
 };
 
 export async function GET(req: Request) {
@@ -65,15 +66,17 @@ export async function GET(req: Request) {
       return NextResponse.json([]);
     }
 
-    // === PERBAIKAN 2: Ganti 'any' dengan tipe yang sudah didefinisikan ===
+    // === PERBAIKAN 2: Ambil elemen pertama dari array saat mapping ===
+    // Tipe 'item' sekarang sudah benar sesuai dengan RawJournalData.
     const formattedData: FormattedJournal[] = data.map((item: RawJournalData) => ({
       id: item.id,
       materi: item.materi,
       deskripsi: item.deskripsi,
       catatan: item.catatan,
       date: item.date,
-      class_name: item.class?.name || "N/A",
-      teacher_name: item.teacher?.name || "N/A",
+      // Gunakan optional chaining (?.[0]) untuk mengambil elemen pertama dengan aman
+      class_name: item.class?.[0]?.name || "N/A",
+      teacher_name: item.teacher?.[0]?.name || "N/A",
     }));
 
     return NextResponse.json(formattedData);
