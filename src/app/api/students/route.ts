@@ -11,7 +11,13 @@ export async function GET(req: Request) {
         const { searchParams } = new URL(req.url);
         const class_id = searchParams.get("class_id");
 
-        let query = supabase.from('students').select('*').order('name');
+        // === PERBAIKAN DI SINI ===
+        // Selalu urutkan berdasarkan nama secara ascending (A-Z)
+        let query = supabase
+            .from('students')
+            .select('*')
+            .order('name', { ascending: true });
+            
         if (class_id) {
             query = query.eq('class_id', class_id);
         }
@@ -19,6 +25,7 @@ export async function GET(req: Request) {
         const { data, error } = await query;
         if (error) throw error;
         return NextResponse.json(data);
+
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Gagal mengambil data siswa";
         return NextResponse.json({ message }, { status: 500 });
@@ -28,12 +35,17 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
     try {
         const body = await req.json();
+        // Hapus properti 'nis' jika ada, karena sudah tidak digunakan
+        if ('nis' in body) {
+            delete body.nis;
+        }
+        
         const { data, error } = await supabase.from('students').insert(body).select().single();
         if (error) throw error;
         return NextResponse.json(data, { status: 201 });
+
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Gagal menambah siswa";
         return NextResponse.json({ message }, { status: 500 });
     }
 }
-

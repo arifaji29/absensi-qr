@@ -25,8 +25,11 @@ export async function middleware(req: NextRequest) {
     "/classes",
     "/attendance",
     "/students",
+    "/journal",
     "/teachers",
     "/dashboard-students",
+    "/dashboard-monitoring",
+    "/dashboard-journal",
     "/dashboard-attendance",
   ];
 

@@ -7,10 +7,9 @@ import { QRCodeCanvas } from "qrcode.react";
 import { createRoot } from "react-dom/client";
 import { ArrowLeft, Home, Plus, Download, Edit, Trash2 } from "lucide-react";
 
-// Tipe data
+// Tipe data (NIS dihapus)
 type Student = {
   id: string;
-  nis: string;
   name: string;
   gender: string;
   date_of_birth: string | null;
@@ -35,8 +34,8 @@ export default function StudentsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   
+  // Form state tanpa NIS
   const [form, setForm] = useState({
-    nis: "",
     name: "",
     gender: "Laki-laki",
     date_of_birth: "",
@@ -50,6 +49,7 @@ export default function StudentsPage() {
     try {
       const [classRes, studentRes] = await Promise.all([
         fetch("/api/classes"),
+        // API ini harus mengembalikan siswa yang sudah diurutkan berdasarkan nama
         fetch(`/api/students${classIdFromUrl ? `?class_id=${classIdFromUrl}` : ""}`),
       ]);
 
@@ -78,21 +78,22 @@ export default function StudentsPage() {
 
   // Fungsi untuk mereset form
   const resetForm = useCallback(() => {
-    setForm({ nis: "", name: "", gender: "Laki-laki", date_of_birth: "", class_id: classIdFromUrl });
+    setForm({ name: "", gender: "Laki-laki", date_of_birth: "", class_id: classIdFromUrl });
   }, [classIdFromUrl]);
 
-  // Fungsi untuk download QR Code siswa
+  // Fungsi untuk download QR Code siswa (sekarang menggunakan ID unik siswa)
   const downloadQR = useCallback((student: Student) => {
     const qrClassName = className || classes.find((c) => c.id === student.class_id)?.name || "-";
     const temp = document.createElement("div");
     document.body.appendChild(temp);
     const root = createRoot(temp);
-    root.render(<QRCodeCanvas value={JSON.stringify({ nis: student.nis, name: student.name, class: qrClassName })} size={220} includeMargin />);
+    // Payload QR Code menggunakan student_id (uuid) yang permanen
+    root.render(<QRCodeCanvas value={JSON.stringify({ student_id: student.id, name: student.name, class: qrClassName })} size={220} includeMargin />);
     setTimeout(() => {
       const qrCanvas = temp.querySelector("canvas");
       if (!qrCanvas) { root.unmount(); document.body.removeChild(temp); return; }
       const finalCanvas = document.createElement("canvas");
-      const padding = 20, textBlockH = 80;
+      const padding = 20, textBlockH = 60; // Mengurangi tinggi text block karena satu baris teks dihapus
       finalCanvas.width = qrCanvas.width + padding * 2;
       finalCanvas.height = qrCanvas.height + padding + textBlockH;
       const ctx = finalCanvas.getContext("2d")!;
@@ -101,16 +102,15 @@ export default function StudentsPage() {
       ctx.drawImage(qrCanvas, padding, padding);
       ctx.fillStyle = "#000000";
       ctx.textAlign = "center";
-      let y = padding + qrCanvas.height + 15;
+      let y = padding + qrCanvas.height + 25; // Sesuaikan posisi y awal
+      ctx.font = "bold 18px Arial";
+      ctx.fillText(student.name, finalCanvas.width / 2, y); y += 25;
       ctx.font = "16px Arial";
-      ctx.fillText(student.nis, finalCanvas.width / 2, y); y += 22;
-      ctx.font = "bold 16px Arial";
-      ctx.fillText(student.name, finalCanvas.width / 2, y); y += 22;
-      ctx.font = "16px Arial";
+      // === PERUBAHAN UTAMA: Baris untuk "No. Urut" dihapus ===
       ctx.fillText(`Kelas: ${qrClassName}`, finalCanvas.width / 2, y);
       const link = document.createElement("a");
       link.href = finalCanvas.toDataURL("image/png");
-      link.download = `QR_${student.name}_${student.nis}.png`;
+      link.download = `QR_${student.name}.png`;
       link.click();
       root.unmount();
       document.body.removeChild(temp);
@@ -165,7 +165,8 @@ export default function StudentsPage() {
   const openEditModal = useCallback((student: Student) => {
     setEditingId(student.id);
     setForm({
-      nis: student.nis, name: student.name, gender: student.gender,
+      name: student.name,
+      gender: student.gender,
       date_of_birth: student.date_of_birth ? student.date_of_birth.split("T")[0] : "",
       class_id: student.class_id || classIdFromUrl,
     });
@@ -198,7 +199,6 @@ export default function StudentsPage() {
           </div>
         </div>
         
-        {/* Tombol Aksi Utama (hanya muncul saat melihat per kelas) */}
         {classIdFromUrl && (
           <div className="mb-6">
             <button
@@ -211,13 +211,12 @@ export default function StudentsPage() {
           </div>
         )}
         
-        {/* Tabel Data Siswa */}
         {loading ? (<p className="text-center text-gray-500 py-8">Memuat data siswa...</p>) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-gray-100 text-left text-gray-600">
                 <tr>
-                  <th className="p-4 font-semibold">NIS</th>
+                  <th className="p-4 font-semibold">No.</th>
                   <th className="p-4 font-semibold">Nama</th>
                   <th className="p-4 font-semibold">Gender</th>
                   <th className="p-4 font-semibold">Tanggal Lahir</th>
@@ -236,34 +235,35 @@ export default function StudentsPage() {
                     </td>
                   </tr>
                 ) : (
-                  students.map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-50 border-b last:border-b-0">
-                      <td className="p-4 whitespace-nowrap">{s.nis}</td>
-                      <td className="p-4 font-medium text-gray-800 whitespace-nowrap">{s.name}</td>
-                      <td className="p-4 whitespace-nowrap">{s.gender}</td>
-                      <td className="p-4 whitespace-nowrap">{s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString("id-ID", { year: 'numeric', month: 'long', day: 'numeric' }) : "-"}</td>
-                      {!classIdFromUrl && <td className="p-4 whitespace-nowrap">{classes.find((c) => c.id === s.class_id)?.name || "-"}</td>}
-                      {classIdFromUrl && (
-                        <td className="p-4 text-center space-x-2">
-                          <button onClick={() => downloadQR(s)} title="Download QR" className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200"><Download size={14} /></button>
-                          <button onClick={() => openEditModal(s)} title="Edit" className="p-2 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"><Edit size={14} /></button>
-                          <button onClick={() => handleDelete(s.id)} title="Hapus" className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"><Trash2 size={14} /></button>
-                        </td>
-                      )}
-                    </tr>
-                  ))
+                  students.map((s, index) => {
+                    const sequenceNumber = (index + 1).toString().padStart(3, '0');
+                    return (
+                      <tr key={s.id} className="hover:bg-gray-50 border-b last:border-b-0">
+                        <td className="p-4 whitespace-nowrap">{sequenceNumber}</td>
+                        <td className="p-4 font-medium text-gray-800 whitespace-nowrap">{s.name}</td>
+                        <td className="p-4 whitespace-nowrap">{s.gender}</td>
+                        <td className="p-4 whitespace-nowrap">{s.date_of_birth ? new Date(s.date_of_birth).toLocaleDateString("id-ID", { year: 'numeric', month: 'long', day: 'numeric' }) : "-"}</td>
+                        {!classIdFromUrl && <td className="p-4 whitespace-nowrap">{classes.find((c) => c.id === s.class_id)?.name || "-"}</td>}
+                        {classIdFromUrl && (
+                          <td className="p-4 text-center space-x-2">
+                            <button onClick={() => downloadQR(s)} title="Download QR" className="p-2 bg-green-100 text-green-700 rounded-md hover:bg-green-200"><Download size={14} /></button>
+                            <button onClick={() => openEditModal(s)} title="Edit" className="p-2 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200"><Edit size={14} /></button>
+                            <button onClick={() => handleDelete(s.id)} title="Hapus" className="p-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"><Trash2 size={14} /></button>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Modal Tambah Siswa */}
         {(showAddModal || showEditModal) && (
           <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
             <form onSubmit={showAddModal ? handleAdd : handleEdit} className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md space-y-4">
               <h2 className="text-2xl font-bold mb-4">{showAddModal ? 'Tambah Siswa Baru' : 'Edit Data Siswa'}</h2>
-              <input type="text" placeholder="NIS" value={form.nis} onChange={(e) => setForm({ ...form, nis: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50" />
               <input type="text" placeholder="Nama Lengkap" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50" required />
               <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="border p-3 w-full rounded-lg bg-gray-50">
                 <option value="Laki-laki">Laki-laki</option>
@@ -284,3 +284,4 @@ export default function StudentsPage() {
     </div>
   );
 }
+

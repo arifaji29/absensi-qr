@@ -1,5 +1,3 @@
-// src/app/api/monitoring/attendance/route.ts
-
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -8,12 +6,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// --- LANGKAH 1: DEFINISIKAN TIPE DATA ---
-// Tipe ini harus cocok dengan apa yang dikembalikan oleh fungsi RPC Anda
+// Tipe data diperbarui: nis dihapus
 type MonitoringRpcResult = {
   student_id: string;
   name: string;
-  nis: string;
   attendance_records: { date: string; status: string }[] | null;
 };
 
@@ -42,9 +38,10 @@ export async function GET(req: Request) {
       throw error;
     }
 
-    // --- LANGKAH 2: TERAPKAN TIPE PADA PARAMETER 'item' ---
+    // Terapkan tipe yang sudah diperbarui
     const formattedData = data.map((item: MonitoringRpcResult) => ({
-      ...item,
+      student_id: item.student_id,
+      name: item.name,
       attendance_records: item.attendance_records || [],
     }));
 
@@ -56,3 +53,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ message }, { status: 500 });
   }
 }
+

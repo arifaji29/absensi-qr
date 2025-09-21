@@ -4,13 +4,11 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Link from "next/link";
-// 1. Impor ikon baru
 import { ArrowLeft, Home, QrCode, RotateCcw, ShieldCheck, CheckCircle, CalendarOff } from "lucide-react";
 
-// Tipe data
+// Tipe data (NIS dihapus)
 type Attendance = {
   student_id: string;
-  nis: string;
   name: string;
   status: string;
   checked_in_at: string | null;
@@ -23,6 +21,7 @@ type Teacher = {
 
 // Fungsi helper
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta'});
 
 export default function AttendancePage() {
   const searchParams = useSearchParams();
@@ -50,6 +49,8 @@ export default function AttendancePage() {
     if (!classId) return;
     setLoading(true);
     try {
+      // === PERBAIKAN UTAMA DI SINI ===
+      // URL untuk studentRes diperbaiki agar classId menjadi query parameter
       const [studentRes, validationRes, teachersRes, classRes] = await Promise.all([
         fetch(`/api/attendance?class_id=${classId}&date=${date}`),
         fetch(`/api/attendance/status?class_id=${classId}&date=${date}`),
@@ -94,7 +95,6 @@ export default function AttendancePage() {
     }
   }, [classId, selectedDate, fetchData]);
 
-  // 2. Fungsi baru untuk meliburkan semua siswa
   const handleSetHoliday = useCallback(async () => {
     if (!confirm(`Anda yakin ingin meliburkan seluruh siswa kelas ${className} pada tanggal ${selectedDate}? Aksi ini akan mengubah status semua siswa menjadi "Libur".`)) return;
     try {
@@ -159,7 +159,7 @@ export default function AttendancePage() {
       setIsScannerOpen(false);
       try {
         const qrData = JSON.parse(decodedText);
-        const student = attendance.find((s) => s.nis === qrData.nis);
+        const student = attendance.find((s) => s.student_id === qrData.student_id);
         if (!student) throw new Error("Siswa tidak ditemukan di kelas ini.");
         await handleStatusChange(student.student_id, "Hadir");
         if (audioRef.current) audioRef.current.play().catch(console.error);
@@ -171,11 +171,8 @@ export default function AttendancePage() {
     return () => { scanner.clear().catch(console.error) };
   }, [isScannerOpen, attendance, handleStatusChange]);
 
-  // 3. Tambahkan "Libur" ke status options
   const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha", "Libur"];
   
-  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta'});
-
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
       <div className="bg-white p-6 rounded-xl shadow-md">
@@ -217,17 +214,16 @@ export default function AttendancePage() {
           </div>
 
           {!isValidated && (
-            // 4. Tambahkan tombol Liburkan
             <div className="w-full md:w-auto flex flex-col gap-2">
                <div className="grid grid-cols-2 gap-2">
                  <button onClick={() => setIsScannerOpen(true)} className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm shadow-sm">
-                    <QrCode size={16} />
-                    <span>Scan QR</span>
-                  </button>
-                  <button onClick={handleSetHoliday} className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm shadow-sm">
-                    <CalendarOff size={16} />
-                    <span>Liburkan</span>
-                  </button>
+                   <QrCode size={16} />
+                   <span>Scan QR</span>
+                 </button>
+                 <button onClick={handleSetHoliday} className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm shadow-sm">
+                   <CalendarOff size={16} />
+                   <span>Liburkan</span>
+                 </button>
                </div>
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
@@ -289,17 +285,16 @@ export default function AttendancePage() {
             <table className="w-full text-sm">
               <thead className="bg-gray-100 text-left text-gray-600">
                 <tr>
-                  <th className="p-4 font-semibold">NIS</th>
+                  <th className="p-4 font-semibold">No.</th>
                   <th className="p-4 font-semibold">Nama</th>
                   <th className="p-4 font-semibold w-48">Status</th>
                   <th className="p-4 font-semibold">Waktu Kehadiran</th>
                 </tr>
               </thead>
               <tbody>
-                {attendance.map((a) => (
-                  // 5. Tambahkan styling untuk status "Libur"
+                {attendance.map((a, index) => (
                   <tr key={a.student_id} className={`border-b last:border-b-0 ${a.status === 'Hadir' ? 'bg-green-50' : a.status === 'Libur' ? 'bg-gray-100 text-gray-500' : a.status !== 'Belum Hadir' ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
-                    <td className="p-3 whitespace-nowrap">{a.nis}</td>
+                    <td className="p-3 whitespace-nowrap">{(index + 1).toString().padStart(3, '0')}</td>
                     <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{a.name}</td>
                     <td className="p-3">
                       <select 
@@ -308,7 +303,6 @@ export default function AttendancePage() {
                         className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed disabled:text-gray-500 appearance-none" 
                         disabled={isValidated || a.status === 'Libur'}
                       >
-                        {/* 6. Sembunyikan "Libur" dari opsi manual */}
                         {statusOptions.map((opt) => {
                           if (opt === "Libur" && a.status !== "Libur") return null;
                           if (opt === "Hadir" && a.status !== "Hadir") return null;

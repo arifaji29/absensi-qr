@@ -85,7 +85,7 @@ export default function DashboardMonitoringPage() {
                             <span>Kehadiran</span>
                           </Link>
                           <Link 
-                            href={`/monitoring/pembelajaran?class_id=${cls.id}`}
+                            href={`/monitoring/learning?class_id=${cls.id}`}
                             className="flex items-center justify-center gap-2 px-4 py-2 font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-xs"
                           >
                             <BookOpen size={14} />

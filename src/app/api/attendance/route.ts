@@ -6,13 +6,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Tipe untuk hasil mentah dari fungsi RPC
+// Tipe untuk hasil mentah dari fungsi RPC (tanpa NIS)
 type RpcResult = {
   student_id: string;
-  nis: string;
   name: string;
   status: string;
-  time_in: string | null; // Nama kolom dari database
+  time_in: string | null;
   is_validated: boolean;
 };
 
@@ -33,15 +32,13 @@ export async function GET(req: Request) {
 
     if (error) throw error;
 
-    // --- PERBAIKAN DI SINI: Petakan nama properti ---
-    // Ubah data mentah dari database menjadi format yang diharapkan frontend
+    // Mapping data tanpa menyertakan NIS
     const formattedData = data.map((item: RpcResult) => ({
       student_id: item.student_id,
-      nis: item.nis,
       name: item.name,
       status: item.status,
-      checked_in_at: item.time_in, // Mapping dari 'time_in' ke 'checked_in_at'
-      is_validated: item.is_validated, // Kita tetap sertakan ini untuk logika di frontend
+      checked_in_at: item.time_in,
+      is_validated: item.is_validated,
     }));
 
     return NextResponse.json(formattedData);
