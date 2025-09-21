@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Tipe untuk memformat data yang akan dikirim ke client
+// Tipe untuk memformat data yang akan dikirim ke client (tetap sama)
 type FormattedJournal = {
   id: string;
   materi: string;
@@ -18,18 +18,28 @@ type FormattedJournal = {
   teacher_name: string;
 };
 
+// === PERBAIKAN 1: Buat tipe untuk data mentah dari Supabase ===
+type RawJournalData = {
+    id: string;
+    materi: string;
+    deskripsi: string;
+    catatan: string | null;
+    date: string;
+    class: { name: string } | null;
+    teacher: { name: string } | null;
+};
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const class_id = searchParams.get("class_id");
-    const start_date = searchParams.get("start_date"); // <-- Parameter baru
-    const end_date = searchParams.get("end_date");     // <-- Parameter baru
+    const start_date = searchParams.get("start_date");
+    const end_date = searchParams.get("end_date");
 
     if (!class_id || !start_date || !end_date) {
       return NextResponse.json({ error: "Parameter class_id, start_date, dan end_date wajib diisi." }, { status: 400 });
     }
 
-    // === PERUBAHAN UTAMA: Query untuk rentang tanggal ===
     const { data, error } = await supabase
       .from('journals')
       .select(`
@@ -42,9 +52,9 @@ export async function GET(req: Request) {
         teacher:teachers ( name )
       `)
       .eq('class_id', class_id)
-      .gte('date', start_date) // Lebih besar atau sama dengan tanggal mulai
-      .lte('date', end_date)   // Lebih kecil atau sama dengan tanggal akhir
-      .order('date', { ascending: false }); // Urutkan dari yang terbaru
+      .gte('date', start_date)
+      .lte('date', end_date)
+      .order('date', { ascending: false });
 
     if (error) {
       console.error("Supabase error:", error.message);
@@ -52,11 +62,11 @@ export async function GET(req: Request) {
     }
     
     if (!data) {
-      return NextResponse.json([]); // Kembalikan array kosong jika tidak ada data
+      return NextResponse.json([]);
     }
 
-    // Format data agar lebih mudah digunakan di frontend
-    const formattedData: FormattedJournal[] = data.map((item: any) => ({
+    // === PERBAIKAN 2: Ganti 'any' dengan tipe yang sudah didefinisikan ===
+    const formattedData: FormattedJournal[] = data.map((item: RawJournalData) => ({
       id: item.id,
       materi: item.materi,
       deskripsi: item.deskripsi,
