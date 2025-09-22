@@ -124,7 +124,7 @@ export default function LearningMonitoringContent() {
           </div>
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard-journal"
+              href="/dashboard-monitoring"
               className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
             >
               <ArrowLeft size={16} />
