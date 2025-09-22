@@ -67,7 +67,7 @@ export default function JournalDashboard() {
         
         {/* Tombol Aksi Navigasi Tambahan */}
         <div className="mb-6">
-          <Link href="/monitoring/learning" className="inline-flex items-center gap-2 bg-cyan-600 text-white px-5 py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold shadow-sm">
+          <Link href="/dashboard-monitoring" className="inline-flex items-center gap-2 bg-cyan-600 text-white px-5 py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold shadow-sm">
             <LayoutDashboard size={18} />
             <span>Lihat Dashboard Monitoring</span>
           </Link>
