@@ -4,23 +4,22 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Home, BookOpen, LayoutDashboard } from "lucide-react";
 
-// Tipe data yang sama seperti di dashboard lain
-type Teacher = { 
-  id: string; 
-  name: string 
+// Tipe data
+type Teacher = {
+  id: string;
+  name: string;
 };
 
-type ClassWithTeachers = { 
-  id: string; 
-  name: string; 
-  teachers: Teacher[] 
+type ClassWithTeachers = {
+  id: string;
+  name: string;
+  teachers: Teacher[];
 };
 
 export default function JournalDashboard() {
   const [classes, setClasses] = useState<ClassWithTeachers[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fungsi untuk mengambil data kelas dari API
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -34,7 +33,6 @@ export default function JournalDashboard() {
     }
   }, []);
 
-  // Jalankan fetchData saat komponen pertama kali dimuat
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -55,24 +53,26 @@ export default function JournalDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
-              <ArrowLeft size={16} />
+              {/* PERUBAHAN: Ukuran ikon diperbesar */}
+              <ArrowLeft size={18} />
               <span>Kembali</span>
             </Link>
             <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
-              <Home size={16} />
+              {/* PERUBAHAN: Ukuran ikon diperbesar */}
+              <Home size={18} />
               <span>Home</span>
             </Link>
           </div>
         </div>
-        
+
         {/* Tombol Aksi Navigasi Tambahan */}
         <div className="mb-6">
-          <Link href="/dashboard-monitoring" className="inline-flex items-center gap-2 bg-cyan-600 text-white px-5 py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold shadow-sm">
-            <LayoutDashboard size={18} />
+          <Link href="/dashboard-monitoring" className="inline-flex w-full sm:w-auto justify-center items-center gap-2 bg-cyan-600 text-white px-5 py-2 rounded-lg hover:bg-cyan-700 transition-colors font-semibold shadow-sm">
+            {/* PERUBAHAN: Ukuran ikon diperbesar */}
+            <LayoutDashboard size={20} />
             <span>Lihat Dashboard Monitoring</span>
           </Link>
         </div>
-
 
         {/* Tabel Data Kelas */}
         {loading ? (
@@ -96,12 +96,15 @@ export default function JournalDashboard() {
                         {cls.teachers.length > 0 ? cls.teachers.map((t) => t.name).join(", ") : <span className="text-gray-400">Belum ada</span>}
                       </td>
                       <td className="p-4 text-center">
-                        <Link 
-                          href={`/journal?class_id=${cls.id}`} 
-                          className="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs font-semibold shadow-sm transition-colors"
+                        {/* PERUBAHAN UTAMA: Tombol dibuat lebih responsif */}
+                        <Link
+                          href={`/journal?class_id=${cls.id}`}
+                          className="inline-flex items-center justify-center gap-2 px-3 sm:px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-xs font-semibold shadow-sm transition-colors"
                         >
-                          <BookOpen size={14} />
-                          <span>Buat Jurnal Pembelajaran</span>
+                          <BookOpen size={16} />
+                          {/* Teks diubah agar responsif */}
+                          <span className="sm:hidden">Buat Jurnal</span>
+                          <span className="hidden sm:inline">Buat Jurnal Pembelajaran</span>
                         </Link>
                       </td>
                     </tr>
@@ -110,11 +113,11 @@ export default function JournalDashboard() {
               </table>
             ) : (
               <div className="text-center py-12 px-6 bg-gray-50 rounded-lg">
-                  <h3 className="text-lg font-semibold text-gray-700">Belum Ada Kelas</h3>
-                  <p className="text-gray-500 mt-2">Silakan tambahkan data kelas terlebih dahulu di halaman Manajemen Kelas.</p>
-                  <Link href="/classes" className="mt-4 inline-block px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
-                    Pergi ke Manajemen Kelas
-                  </Link>
+                <h3 className="text-lg font-semibold text-gray-700">Belum Ada Kelas</h3>
+                <p className="text-gray-500 mt-2">Silakan tambahkan data kelas terlebih dahulu di halaman Manajemen Kelas.</p>
+                <Link href="/classes" className="mt-4 inline-block px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-sm">
+                  Pergi ke Manajemen Kelas
+                </Link>
               </div>
             )}
           </div>
@@ -123,4 +126,3 @@ export default function JournalDashboard() {
     </div>
   );
 }
-

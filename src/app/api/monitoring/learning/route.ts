@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server"; // PERUBAHAN 1: Impor NextRequest
 import { createClient } from "@supabase/supabase-js";
 
-// Inisialisasi Supabase client dengan service role key
+// Inisialisasi Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Tipe untuk memformat data yang akan dikirim ke client (tetap sama)
+// Tipe data (tidak ada perubahan)
 type FormattedJournal = {
   id: string;
   materi: string;
@@ -18,21 +18,21 @@ type FormattedJournal = {
   teacher_name: string;
 };
 
-// === PERBAIKAN 1: Sesuaikan tipe agar cocok dengan hasil join Supabase ===
-// Tipe ini sekarang mendefinisikan 'class' dan 'teacher' sebagai array dari objek.
 type RawJournalData = {
     id: string;
     materi: string;
     deskripsi: string;
     catatan: string | null;
     date: string;
-    class: { name: string }[] | null;
-    teacher: { name: string }[] | null;
+    class: { name: string } | null;
+    teacher: { name: string } | null;
 };
 
-export async function GET(req: Request) {
+// PERUBAHAN 2: Ganti tipe 'req' menjadi NextRequest
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    // PERUBAHAN 3: Gunakan cara Next.js untuk membaca parameter URL
+    const searchParams = req.nextUrl.searchParams;
     const class_id = searchParams.get("class_id");
     const start_date = searchParams.get("start_date");
     const end_date = searchParams.get("end_date");
@@ -41,6 +41,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Parameter class_id, start_date, dan end_date wajib diisi." }, { status: 400 });
     }
 
+    // Query ke Supabase (tidak ada perubahan, sudah benar)
     const { data, error } = await supabase
       .from('journals')
       .select(`
@@ -66,17 +67,15 @@ export async function GET(req: Request) {
       return NextResponse.json([]);
     }
 
-    // === PERBAIKAN 2: Ambil elemen pertama dari array saat mapping ===
-    // Tipe 'item' sekarang sudah benar sesuai dengan RawJournalData.
+    // Transformasi data (tidak ada perubahan, sudah benar)
     const formattedData: FormattedJournal[] = data.map((item: RawJournalData) => ({
       id: item.id,
       materi: item.materi,
       deskripsi: item.deskripsi,
       catatan: item.catatan,
       date: item.date,
-      // Gunakan optional chaining (?.[0]) untuk mengambil elemen pertama dengan aman
-      class_name: item.class?.[0]?.name || "N/A",
-      teacher_name: item.teacher?.[0]?.name || "N/A",
+      class_name: item.class?.name || "Kelas Tidak Ditemukan",
+      teacher_name: item.teacher?.name || "Pengajar Tidak Ditemukan",
     }));
 
     return NextResponse.json(formattedData);
@@ -90,4 +89,3 @@ export async function GET(req: Request) {
     );
   }
 }
-
