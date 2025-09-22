@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import Link from 'next/link';
-import Image from 'next/image'; // 1. Impor komponen Image
-import { Eye, EyeOff } from 'lucide-react';
+import Link from "next/link";
+import Image from "next/image";
+import { Eye, EyeOff, Unlock } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -24,7 +24,7 @@ export default function LoginPage() {
       email,
       password,
     });
-    
+
     if (error) {
       setError(error.message);
     } else {
@@ -35,23 +35,22 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-green-50 p-4">
-      
-      {/* 2. Tambahkan Logo Lingkaran */}
-      <div className="mb-4"> {/* Menambahkan margin bawah untuk jarak */}
-          <div className="relative w-17 h-17 rounded-full overflow-hidden flex items-center justify-center shadow-md">
-            <div className="w-[70px] h-[70px] rounded-full overflow-hidden flex items-center justify-center">
-              <Image
-                src="/logoTPQ.png"
-                alt="Logo"
-                width={70}
-                height={70}
-                className="rounded-full object-cover"
-              />
-            </div>
+      {/* Logo */}
+      <div className="mb-4">
+        <div className="relative w-17 h-17 rounded-full overflow-hidden flex items-center justify-center shadow-md">
+          <div className="w-[70px] h-[70px] rounded-full overflow-hidden flex items-center justify-center">
+            <Image
+              src="/logoTPQ.png"
+              alt="Logo"
+              width={70}
+              height={70}
+              className="rounded-full object-cover"
+            />
           </div>
+        </div>
       </div>
 
-      {/* 3. Blok header dari halaman utama */}
+      {/* Header */}
       <div className="text-center mb-5">
         <h1 className="text-3xl md:text-4xl font-bold text-green-800">
           SIABSOR
@@ -64,20 +63,20 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* 4. Formulir login */}
+      {/* Form Login */}
       <form
         onSubmit={handleLogin}
         className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md space-y-4"
       >
         <h2 className="text-2xl font-bold text-green-700 text-center">Login</h2>
-        
+
         {error && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative text-center text-sm">
             {error.toLowerCase().includes("invalid login credentials") ? (
               <span>
                 Email atau password salah.
                 <br />
-                Belum punya akun?{' '}
+                Belum punya akun?{" "}
                 <Link href="/register" className="font-bold hover:underline">
                   Daftar di sini.
                 </Link>
@@ -96,7 +95,7 @@ export default function LoginPage() {
           className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
           required
         />
-        
+
         <div className="relative">
           <input
             type={showPassword ? "text" : "password"}
@@ -110,7 +109,9 @@ export default function LoginPage() {
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
-            aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+            aria-label={
+              showPassword ? "Sembunyikan password" : "Tampilkan password"
+            }
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -124,13 +125,26 @@ export default function LoginPage() {
         </button>
 
         <div className="text-center text-sm text-gray-600 pt-2">
-            Belum punya akun?{' '}
-            <Link href="/register" className="font-semibold text-green-600 hover:underline">
-              Daftar sekarang
-            </Link>
+          Belum punya akun?{" "}
+          <Link
+            href="/register"
+            className="font-semibold text-green-600 hover:underline"
+          >
+            Daftar sekarang
+          </Link>
+        </div>
+
+        {/* Tombol akses tanpa login */}
+        <div className="text-center pt-4">
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center gap-2 w-full bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600 transition-colors"
+          >
+            <Unlock size={18} />
+            Akses Tanpa Login
+          </Link>
         </div>
       </form>
     </div>
   );
 }
-
