@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// Inisialisasi Supabase client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// Tipe untuk data yang sudah diformat
 type FormattedJournal = {
   id: string;
   materi: string;
@@ -17,6 +18,7 @@ type FormattedJournal = {
   teacher_name: string;
 };
 
+// Raw data dari Supabase (class & teacher = object tunggal, bukan array)
 type RawJournalData = {
   id: string;
   materi: string;
@@ -41,9 +43,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Query ke Supabase
     const { data, error } = await supabase
       .from("journals")
-      .select(`
+      .select(
+        `
         id,
         materi,
         deskripsi,
@@ -51,7 +55,8 @@ export async function GET(req: NextRequest) {
         date,
         class:classes ( name ),
         teacher:teachers!journals_teacher_id_fkey ( name )
-      `)
+      `
+      )
       .eq("class_id", class_id)
       .gte("date", start_date)
       .lte("date", end_date)
@@ -59,19 +64,23 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       console.error("Supabase error:", error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      throw new Error("Gagal mengambil data jurnal dari database.");
     }
 
-    const formattedData: FormattedJournal[] =
-      data?.map((item: RawJournalData) => ({
-        id: item.id,
-        materi: item.materi,
-        deskripsi: item.deskripsi,
-        catatan: item.catatan,
-        date: item.date,
-        class_name: item.class?.name || "Kelas Tidak Ditemukan",
-        teacher_name: item.teacher?.name || "Pengajar Tidak Ditemukan",
-      })) ?? [];
+    if (!data) {
+      return NextResponse.json([]);
+    }
+
+    // Format data (langsung akses object, bukan array)
+    const formattedData: FormattedJournal[] = data.map((item: RawJournalData) => ({
+      id: item.id,
+      materi: item.materi,
+      deskripsi: item.deskripsi,
+      catatan: item.catatan,
+      date: item.date,
+      class_name: item.class?.name || "Kelas Tidak Ditemukan",
+      teacher_name: item.teacher?.name || "Pengajar Tidak Ditemukan",
+    }));
 
     return NextResponse.json(formattedData);
   } catch (err: unknown) {
