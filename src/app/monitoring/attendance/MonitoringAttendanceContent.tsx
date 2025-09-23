@@ -8,8 +8,8 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// Tipe data
-type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "Libur" | "-" | "Belum Hadir";
+// PERUBAHAN: Tipe data "Libur" dihapus
+type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "-" | "Belum Hadir";
 type AttendanceRecord = { date: string; status: AttendanceStatus };
 type MonitoringData = {
   student_id: string;
@@ -24,7 +24,6 @@ type AttendanceStats = {
   Sakit: number;
   Izin: number;
   Alpha: number;
-  Libur: number;
   percentage: number;
 };
 
@@ -55,11 +54,20 @@ export default function AttendanceMonitoringPage() {
   const [className, setClassName] = useState("");
   const [dateHeaders, setDateHeaders] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'daily' | 'stats'>('daily');
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // State untuk login
 
   const today = new Date();
   const currentYear = today.getFullYear();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  
+  // Cek login status
+  useEffect(() => {
+    const token = localStorage.getItem('authToken'); 
+    if (token) {
+      setIsLoggedIn(true);
+    }
+  }, []);
 
   const fetchData = useCallback(async (startDate: string, endDate: string) => {
     if (!classId) return;
@@ -116,8 +124,8 @@ export default function AttendanceMonitoringPage() {
       case "Hadir": return "bg-green-100 text-green-800 font-semibold";
       case "Sakit": return "bg-orange-100 text-orange-800 font-semibold";
       case "Izin": return "bg-yellow-100 text-yellow-800 font-semibold";
-      case "Libur": return "bg-red-100 text-red-800 font-semibold";
       case "Alpha": return "bg-gray-200 text-gray-700 font-semibold";
+      // PERUBAHAN: case "Libur" dihapus
       default: return "text-gray-400";
     }
   };
@@ -125,53 +133,43 @@ export default function AttendanceMonitoringPage() {
   const statisticsData: AttendanceStats[] = useMemo(() => {
     if (!monitoringData || monitoringData.length === 0) return [];
     
-    // Tentukan jumlah hari yang telah berlalu dalam bulan yang dipilih
     let daysPassed = 0;
     const today = new Date();
-    // Set jam ke nol untuk perbandingan tanggal yang akurat
     today.setHours(0, 0, 0, 0); 
     
     if (selectedYear < today.getFullYear() || (selectedYear === today.getFullYear() && selectedMonth < today.getMonth())) {
-      // Jika bulan yang dipilih sudah lewat, hitung semua hari dalam bulan itu
       daysPassed = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     } else if (selectedYear === today.getFullYear() && selectedMonth === today.getMonth()) {
-      // Jika bulan ini, hitung hari hingga hari ini
       daysPassed = today.getDate();
     } else {
-      // Jika bulan depan, belum ada hari yang berlalu
       daysPassed = 0;
     }
 
     if (daysPassed === 0) {
       return monitoringData.map(student => ({
-        ...student, Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0, percentage: 0,
+        ...student, Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, percentage: 0,
       }));
     }
 
     return monitoringData.map(student => {
-      const counts: { [key in "Hadir" | "Sakit" | "Izin" | "Alpha" | "Libur"]: number } = { Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, Libur: 0 };
-      let holidayCount = 0;
-
-      // Iterasi hanya sebanyak hari yang telah berlalu
+      // PERUBAHAN: "Libur" dihapus dari object counts
+      const counts: { [key in "Hadir" | "Sakit" | "Izin" | "Alpha"]: number } = { Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0 };
+      
       for (let i = 0; i < daysPassed; i++) {
         const currentDate = dateHeaders[i];
         const record = student.attendance_records.find(r => r.date === currentDate);
         const status = record?.status;
 
-        if (status === "Hadir" || status === "Sakit" || status === "Izin" || status === "Alpha" || status === "Libur") {
-          counts[status]++;
-          if (status === "Libur") {
-            holidayCount++;
-          }
+        // PERUBAHAN: Pengecekan status "Libur" dihapus
+        if (status && ["Hadir", "Sakit", "Izin", "Alpha"].includes(status)) {
+          counts[status as keyof typeof counts]++;
         }
       }
       
-      // Pembagi adalah total hari yang telah dilalui DIKURANGI hari libur
-      const denominator = daysPassed - holidayCount;
-      // Penghitung hanya jumlah Hadir
+      // PERUBAHAN: Logika holidayCount dihapus, denominator disederhanakan
+      const denominator = daysPassed;
       const numerator = counts.Hadir;
       
-      // Hitung persentase, hindari pembagian dengan nol
       const percentage = denominator > 0 ? (numerator / denominator) * 100 : 0;
       
       return {
@@ -186,16 +184,17 @@ export default function AttendanceMonitoringPage() {
   const handleDownloadExcel = () => {
     const header = ["Nama Siswa", ...dateHeaders.map(d => new Date(d + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }))];
     const body = monitoringData.map(student => {
-        const row: { [key: string]: string } = { "Nama Siswa": student.name };
-        dateHeaders.forEach(date => {
-            const record = student.attendance_records.find(r => r.date === date);
-            row[new Date(date + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit', month: 'short' })] = record?.status || "-";
-        });
-        return row;
+      const row: { [key: string]: string } = { "Nama Siswa": student.name };
+      dateHeaders.forEach(date => {
+        const record = student.attendance_records.find(r => r.date === date);
+        row[new Date(date + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit', month: 'short' })] = record?.status || "-";
+      });
+      return row;
     });
     const worksheet = XLSX.utils.json_to_sheet(body);
     XLSX.utils.sheet_add_aoa(worksheet, [header], { origin: "A1" });
-    const legend = [["Keterangan:"], ["H = Hadir"], ["S = Sakit"], ["I = Izin"], ["A = Alpha"], ["L = Libur"]];
+    // PERUBAHAN: Legenda "L = Libur" dihapus
+    const legend = [["Keterangan:"], ["H = Hadir"], ["S = Sakit"], ["I = Izin"], ["A = Alpha"]];
     XLSX.utils.sheet_add_aoa(worksheet, legend, { origin: `A${body.length + 3}` });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Absensi Harian");
@@ -206,9 +205,9 @@ export default function AttendanceMonitoringPage() {
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const tableColumn = ["Nama", ...dateHeaders.map(d => new Date(d + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit' }))];
     const tableRows = monitoringData.map(student => [student.name, ...dateHeaders.map(date => {
-        const record = student.attendance_records.find(r => r.date === date);
-        if (!record || !record.status || record.status === 'Belum Hadir') return "-";
-        return record.status.charAt(0);
+      const record = student.attendance_records.find(r => r.date === date);
+      if (!record || !record.status || record.status === 'Belum Hadir') return "-";
+      return record.status.charAt(0);
     })]);
     doc.text(`Laporan Kehadiran Harian Kelas ${className} - ${monthNames[selectedMonth]} ${selectedYear}`, 14, 15);
     autoTable(doc, {
@@ -216,16 +215,12 @@ export default function AttendanceMonitoringPage() {
       styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
       columnStyles: { 0: { cellWidth: 25, halign: 'left' } },
-      didParseCell: (data) => {
-        if (data.section === 'body') {
-          const status = data.cell.raw?.toString();
-          if (status === 'L') data.cell.styles.textColor = '#E53E3E';
-        }
-      },
+      // PERUBAHAN: didParseCell untuk 'L' dihapus karena tidak relevan
     });
     const finalY = (doc as jsPDFWithLastTable).lastAutoTable.finalY;
     doc.setFontSize(8); doc.setTextColor(100);
-    doc.text("Keterangan: H = Hadir, S = Sakit, I = Izin, A = Alpha, L = Libur", 14, finalY + 10);
+    // PERUBAHAN: Keterangan "L = Libur" dihapus
+    doc.text("Keterangan: H = Hadir, S = Sakit, I = Izin, A = Alpha", 14, finalY + 10);
     doc.save(`Absensi_Harian_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
   };
 
@@ -282,10 +277,12 @@ export default function AttendanceMonitoringPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* <Link href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
-              <ArrowLeft size={16} />
-              <span>Back</span>
-            </Link> */}
+            {isLoggedIn && (
+                <Link href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+                  <ArrowLeft size={16} />
+                  <span>Back</span>
+                </Link>
+            )}
             <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
               <Home size={16} />
               <span>Home</span>
@@ -317,10 +314,10 @@ export default function AttendanceMonitoringPage() {
                    <span>Statistik</span>
                  </button>
             ) : (
-                <button onClick={() => setViewMode('daily')} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm">
-                  <CalendarDays size={16} />
-                  <span>Lihat Harian</span>
-                </button>
+                 <button onClick={() => setViewMode('daily')} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm">
+                   <CalendarDays size={16} />
+                   <span>Lihat Harian</span>
+                 </button>
             )}
             
             <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
@@ -335,7 +332,7 @@ export default function AttendanceMonitoringPage() {
                 </>
               ) : (
                 <>
-                   <button onClick={handleDownloadStatsExcel} className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm">
+                  <button onClick={handleDownloadStatsExcel} className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm">
                     <FileSpreadsheet size={16} /> <span>Excel</span>
                   </button>
                   <button onClick={handleDownloadStatsPDF} className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm">
@@ -390,47 +387,48 @@ export default function AttendanceMonitoringPage() {
                 </table>
               </div>
             ) : (
-               <div className="overflow-x-auto border rounded-lg">
-                 <table className="w-full text-sm">
-                   <thead className="bg-gray-100 text-gray-600">
-                     <tr>
-                       <th className="p-3 text-left font-semibold">Nama Siswa</th>
-                       <th className="p-3 font-semibold text-center">Hadir</th>
-                       <th className="p-3 font-semibold text-center">Sakit</th>
-                       <th className="p-3 font-semibold text-center">Izin</th>
-                       <th className="p-3 font-semibold text-center">Alpha</th>
-                       <th className="p-3 font-semibold text-center">Persentase Kehadiran (%)</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {statisticsData.length > 0 ? (
-                       statisticsData.map((stat) => (
-                         <tr key={stat.student_id} className="border-b last:border-b-0 hover:bg-gray-50">
-                           <td className="p-2 font-medium text-gray-800">{stat.name}</td>
-                           <td className="p-2 text-center">{stat.Hadir}</td>
-                           <td className="p-2 text-center">{stat.Sakit}</td>
-                           <td className="p-2 text-center">{stat.Izin}</td>
-                           <td className="p-2 text-center">{stat.Alpha}</td>
-                           <td className={`p-2 text-center font-bold ${stat.percentage >= 80 ? 'text-green-600' : stat.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                             {stat.percentage}%
-                           </td>
-                         </tr>
-                       ))
-                     ) : (
-                       <tr>
-                         <td colSpan={6} className="text-center p-8 text-gray-500">
-                           <h3 className="text-lg font-semibold">Tidak Ada Data</h3>
-                           <p>Belum ada data untuk ditampilkan statistiknya.</p>
-                         </td>
-                       </tr>
-                     )}
-                   </tbody>
-                 </table>
-               </div>
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100 text-gray-600">
+                    <tr>
+                      <th className="p-3 text-left font-semibold">Nama Siswa</th>
+                      <th className="p-3 font-semibold text-center">Hadir</th>
+                      <th className="p-3 font-semibold text-center">Sakit</th>
+                      <th className="p-3 font-semibold text-center">Izin</th>
+                      <th className="p-3 font-semibold text-center">Alpha</th>
+                      <th className="p-3 font-semibold text-center">Persentase Kehadiran (%)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {statisticsData.length > 0 ? (
+                      statisticsData.map((stat) => (
+                        <tr key={stat.student_id} className="border-b last:border-b-0 hover:bg-gray-50">
+                          <td className="p-2 font-medium text-gray-800">{stat.name}</td>
+                          <td className="p-2 text-center">{stat.Hadir}</td>
+                          <td className="p-2 text-center">{stat.Sakit}</td>
+                          <td className="p-2 text-center">{stat.Izin}</td>
+                          <td className="p-2 text-center">{stat.Alpha}</td>
+                          <td className={`p-2 text-center font-bold ${stat.percentage >= 80 ? 'text-green-600' : stat.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                            {stat.percentage}%
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="text-center p-8 text-gray-500">
+                          <h3 className="text-lg font-semibold">Tidak Ada Data</h3>
+                          <p>Belum ada data untuk ditampilkan statistiknya.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
             
             <div className="mt-4 text-left text-xs text-gray-600">
-                <p><strong>Keterangan:</strong> H = Hadir, S = Sakit, I = Izin, A = Alpha, L = Libur</p>
+              {/* PERUBAHAN: Keterangan "L = Libur" dihapus */}
+              <p><strong>Keterangan:</strong> H = Hadir, S = Sakit, I = Izin, A = Alpha</p>
             </div>
           </>
         )}
@@ -438,4 +436,3 @@ export default function AttendanceMonitoringPage() {
     </div>
   );
 }
-
