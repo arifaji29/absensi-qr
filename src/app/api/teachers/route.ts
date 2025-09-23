@@ -11,8 +11,9 @@ export async function GET() {
   try {
     const { data, error } = await supabase
       .from("teachers")
-      .select("id, no_induk, name, email") // <-- PERBAIKAN DI SINI: Pilih semua kolom yang diperlukan
-      .order("name", { ascending: true }); // Urutkan berdasarkan nama
+      // PERUBAHAN: 'no_induk' dihapus dari query select
+      .select("id, name, email")
+      .order("name", { ascending: true });
 
     if (error) {
       throw error;
@@ -29,15 +30,18 @@ export async function GET() {
 // POST: Membuat data pengajar baru
 export async function POST(req: Request) {
   try {
-    const { no_induk, name, email } = await req.json();
+    // PERUBAHAN: 'no_induk' dihapus dari body request
+    const { name, email } = await req.json();
 
-    if (!name || !no_induk) {
-      return NextResponse.json({ message: "Nomor Induk dan Nama wajib diisi" }, { status: 400 });
+    // PERUBAHAN: Validasi hanya untuk 'name', pesan error disesuaikan
+    if (!name) {
+      return NextResponse.json({ message: "Nama wajib diisi" }, { status: 400 });
     }
 
     const { data, error } = await supabase
       .from("teachers")
-      .insert({ no_induk, name, email })
+      // PERUBAHAN: 'no_induk' dihapus dari data yang akan disimpan
+      .insert({ name, email })
       .select()
       .single();
 

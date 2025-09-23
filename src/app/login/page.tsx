@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import Link from "next/link";
 import Image from "next/image";
-import { Eye, EyeOff, Unlock } from "lucide-react";
+import { Eye, EyeOff, Unlock, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false); // State untuk loading
   const router = useRouter();
 
   const supabase = createClientComponentClient();
@@ -19,18 +20,31 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    // ================================================
+    // === VALIDASI EMAIL DITERAPKAN DI SINI ===
+    // ================================================
+    if (!email.includes("gurutpq") && !email.includes("admintpq")) {
+      setError("Hanya guru yang diizinkan untuk login.");
+      setLoading(false);
+      return; // Hentikan eksekusi jika email tidak valid
+    }
+    // ================================================
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      setError(error.message);
+    if (signInError) {
+      setError(signInError.message);
     } else {
       router.refresh();
       router.push("/");
     }
+    
+    setLoading(false); // Set loading ke false setelah selesai
   };
 
   return (
@@ -94,6 +108,7 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           className="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
           required
+          disabled={loading}
         />
 
         <div className="relative">
@@ -104,6 +119,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             className="w-full border p-2 rounded pr-10 focus:ring-2 focus:ring-green-500 focus:outline-none"
             required
+            disabled={loading}
           />
           <button
             type="button"
@@ -112,6 +128,7 @@ export default function LoginPage() {
             aria-label={
               showPassword ? "Sembunyikan password" : "Tampilkan password"
             }
+            disabled={loading}
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -119,9 +136,11 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition-colors"
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition-colors flex justify-center items-center gap-2 disabled:bg-green-400 disabled:cursor-not-allowed"
+          disabled={loading}
         >
-          Login
+          {loading && <Loader2 size={18} className="animate-spin" />}
+          {loading ? "Memproses..." : "Login"}
         </button>
 
         <div className="text-center text-sm text-gray-600 pt-2">
@@ -141,7 +160,7 @@ export default function LoginPage() {
             className="inline-flex items-center justify-center gap-2 w-full bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600 transition-colors"
           >
             <Unlock size={18} />
-            Akses Tanpa Login
+            Akses Tanpa Login Wali Siswa
           </Link>
         </div>
       </form>
