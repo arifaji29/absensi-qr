@@ -6,18 +6,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Tipe data untuk body request yang diharapkan
-type ScorePayload = {
-  [studentId: string]: {
-    [aspectId: string]: string | number;
-  };
-};
+// Tipe data untuk body request
+type ScorePayload = { [studentId: string]: { [aspectId: string]: string | number } };
+type RequestBody = { classId: string; date: string; scores: ScorePayload };
 
-type RequestBody = {
-  classId: string;
-  date: string;
-  scores: ScorePayload;
-};
+// PERBAIKAN: Definisikan tipe data yang spesifik untuk hasil akhir scoresObject
+type ScoresObject = { [studentId: string]: { [aspectId: string]: string | number } };
 
 // Handler untuk POST request (menyimpan atau update nilai siswa)
 export async function POST(req: NextRequest) {
@@ -25,10 +19,7 @@ export async function POST(req: NextRequest) {
     const { classId, date, scores }: RequestBody = await req.json();
 
     if (!classId || !date || !scores) {
-      return NextResponse.json(
-        { error: "Parameter classId, date, dan scores wajib diisi." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Parameter classId, date, dan scores wajib diisi." }, { status: 400 });
     }
 
     const recordsToUpsert = [];
@@ -36,9 +27,7 @@ export async function POST(req: NextRequest) {
       for (const aspectId in scores[studentId]) {
         const value = scores[studentId][aspectId];
         
-        if (value === '' || value === null || value === undefined) {
-          continue;
-        }
+        if (value === '' || value === null || value === undefined) continue;
 
         const record = {
           student_id: studentId,
@@ -71,10 +60,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const error = err as Error;
     console.error("API POST Error:", error.message);
-    return NextResponse.json(
-      { error: error.message || 'Terjadi kesalahan pada server.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: error.message || 'Terjadi kesalahan pada server.' }, { status: 500 });
   }
 }
 
@@ -99,8 +85,6 @@ export async function GET(req: NextRequest) {
             throw error;
         }
 
-        // Filter data berdasarkan siswa di kelas yang bersangkutan
-        // Ini lebih efisien daripada subquery di dalam .eq()
         const { data: studentsInClass, error: studentError } = await supabase
             .from('students')
             .select('id')
@@ -111,23 +95,20 @@ export async function GET(req: NextRequest) {
         const studentIds = studentsInClass.map(s => s.id);
         const filteredData = data.filter(score => studentIds.includes(score.student_id));
         
-        // Ubah format data array menjadi object agar mudah diakses di frontend
-        const scoresObject = filteredData.reduce((acc: any, score) => {
+        // PERBAIKAN: Ganti 'any' dengan tipe 'ScoresObject' yang sudah didefinisikan
+        const scoresObject = filteredData.reduce((acc: ScoresObject, score) => {
             if (!acc[score.student_id]) {
                 acc[score.student_id] = {};
             }
             acc[score.student_id][score.aspect_id] = score.score_numeric ?? score.score_qualitative;
             return acc;
-        }, {});
+        }, {} as ScoresObject); // Beri tahu TypeScript bahwa objek awal sesuai dengan tipe ScoresObject
         
         return NextResponse.json(scoresObject);
 
     } catch (err: unknown) {
         const error = err as Error;
         console.error("API GET Error:", error.message);
-        return NextResponse.json(
-            { error: error.message || 'Terjadi kesalahan pada server.' }, 
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message || 'Terjadi kesalahan pada server.' }, { status: 500 });
     }
 }

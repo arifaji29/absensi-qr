@@ -6,6 +6,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+// PERBAIKAN: Definisikan tipe data yang spesifik untuk hasil akhir scoresObject
+type ScoresObject = { [studentId: string]: { [aspectId: string]: string | number } };
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -20,39 +23,38 @@ export async function GET(req: NextRequest) {
     const startDate = new Date(parseInt(year), parseInt(month), 1).toISOString();
     const endDate = new Date(parseInt(year), parseInt(month) + 1, 0).toISOString();
 
-    // ==========================================================
-    // === PERBAIKAN UTAMA ADA DI QUERY DI BAWAH INI ===
-    // ==========================================================
     const { data: aspects, error: aspectsError } = await supabase
       .from('assessment_aspects')
-      // 1. PERUBAHAN: Pilih juga kolom 'date' untuk pengurutan
-      .select('id, name, scale_type, date') 
+      .select('id, name, scale_type, date')
       .eq('class_id', class_id)
       .gte('date', startDate)
       .lte('date', endDate)
-      // 2. PERUBAHAN: Urutkan berdasarkan tanggal penilaian, lalu waktu dibuat
       .order('date', { ascending: true })
       .order('created_at', { ascending: true });
 
     if (aspectsError) throw aspectsError;
 
-    // Logika untuk menangani nama aspek yang duplikat (tidak berubah)
+    // PERBAIKAN: Logika disederhanakan untuk menghindari variabel yang tidak terpakai
     const nameTotals: { [key: string]: number } = {};
-    for (const aspect of aspects) {
+    aspects.forEach(aspect => {
         nameTotals[aspect.name] = (nameTotals[aspect.name] || 0) + 1;
-    }
+    });
 
     const nameRunningCounts: { [key: string]: number } = {};
     const processedAspects = aspects.map(aspect => {
-        const { date, ...restOfAspect } = aspect; // Pisahkan 'date' agar tidak masuk ke props final
+        // Buat objek baru agar tidak mengirim kolom 'date' yang tidak perlu ke frontend
+        const newAspect = {
+            id: aspect.id,
+            name: aspect.name,
+            scale_type: aspect.scale_type,
+        };
         if (nameTotals[aspect.name] > 1) {
             nameRunningCounts[aspect.name] = (nameRunningCounts[aspect.name] || 0) + 1;
-            return { ...restOfAspect, name: `${aspect.name} ${nameRunningCounts[aspect.name]}` };
+            newAspect.name = `${aspect.name} ${nameRunningCounts[aspect.name]}`;
         }
-        return restOfAspect;
+        return newAspect;
     });
 
-    // Ambil semua siswa di kelas ini (tidak berubah)
     const { data: students, error: studentsError } = await supabase
       .from('students')
       .select('id, name')
@@ -61,7 +63,6 @@ export async function GET(req: NextRequest) {
 
     if (studentsError) throw studentsError;
 
-    // Ambil semua nilai di bulan ini (tidak berubah)
     const studentIds = students.map(s => s.id);
     const { data: scores, error: scoresError } = await supabase
       .from('student_scores')
@@ -72,14 +73,14 @@ export async function GET(req: NextRequest) {
 
     if (scoresError) throw scoresError;
 
-    // Olah data nilai (tidak berubah)
-    const scoresObject = scores.reduce((acc: any, score) => {
+    // PERBAIKAN: Ganti 'any' dengan tipe 'ScoresObject'
+    const scoresObject = scores.reduce((acc: ScoresObject, score) => {
         if (!acc[score.student_id]) {
             acc[score.student_id] = {};
         }
         acc[score.student_id][score.aspect_id] = score.score_numeric ?? score.score_qualitative;
         return acc;
-    }, {});
+    }, {} as ScoresObject);
     
     return NextResponse.json({ students, aspects: processedAspects, scores: scoresObject });
 
