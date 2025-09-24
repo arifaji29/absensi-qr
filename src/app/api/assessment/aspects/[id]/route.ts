@@ -6,14 +6,19 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+type Context =
+  | { params: { id: string } }
+  | { params: Promise<{ id: string }> };
+
 // Handler untuk DELETE request (menghapus aspek penilaian berdasarkan ID)
-export async function DELETE(
-  req: NextRequest,
-  context: { params: { id: string } } | { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, context: Context) {
   try {
     // dukung kalau params berupa Promise
-    const resolvedParams = await (context.params as any);
+    const resolvedParams =
+      "then" in context.params // kalau Promise, ada method "then"
+        ? await context.params
+        : context.params;
+
     const { id } = resolvedParams;
 
     if (!id) {
