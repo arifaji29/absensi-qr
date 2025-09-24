@@ -9,10 +9,12 @@ const supabase = createClient(
 // Handler untuk DELETE request (menghapus aspek penilaian berdasarkan ID)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } } | { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    // dukung kalau params berupa Promise
+    const resolvedParams = await (context.params as any);
+    const { id } = resolvedParams;
 
     if (!id) {
       return NextResponse.json(
@@ -21,9 +23,7 @@ export async function DELETE(
       );
     }
 
-    // Menghapus aspek dari tabel assessment_aspects
-    // Karena ada 'ON DELETE CASCADE' di tabel student_scores,
-    // semua nilai yang terkait akan otomatis terhapus.
+    // Hapus aspek dari tabel assessment_aspects
     const { error } = await supabase
       .from("assessment_aspects")
       .delete()
