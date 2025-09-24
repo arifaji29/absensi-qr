@@ -104,13 +104,13 @@ export default function AssessmentMonitoringContent() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link
+            {/* <Link
               href="/dashboard-monitoring"
               className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
             >
               <ArrowLeft size={18} />
               <span>Back</span>
-            </Link>
+            </Link> */}
             <Link
               href="/"
               className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
