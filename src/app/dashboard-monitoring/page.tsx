@@ -92,7 +92,7 @@ export default function DashboardMonitoringPage() {
                             <span>Pembelajaran</span>
                           </Link>
                           <Link 
-                            href={`/monitoring/nilai?class_id=${cls.id}`}
+                            href={`/monitoring/assessment?class_id=${cls.id}`}
                             className="flex items-center justify-center gap-2 px-4 py-2 font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-xs"
                           >
                             <BarChart2 size={14} />

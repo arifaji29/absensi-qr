@@ -27,10 +27,13 @@ export async function middleware(req: NextRequest) {
     "/students",
     "/journal",
     "/teachers",
+    "/assessment",
     "/dashboard-students",
     "/dashboard-monitoring",
     "/dashboard-journal",
     "/dashboard-attendance",
+    "/dashboard-assessment",
+
   ];
 
   const isProtectedRoute = protectedRoutes.some((route) =>

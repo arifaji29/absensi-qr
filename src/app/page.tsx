@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Session } from "@supabase/auth-helpers-nextjs";
@@ -22,30 +22,20 @@ type ClassData = {
 };
 
 // Kumpulan Ikon SVG
-const IconKelas = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3H8v4h8V3z" /></svg>
-);
-const IconSiswa = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21a7.5 7.5 0 0 1 13 0" /></svg>
-);
-const IconPresensi = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18M9 16l2 2 4-4" /></svg>
-);
-const IconPengajar = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
-);
-const IconJurnal = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-);
+const IconKelas = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3H8v4h8V3z" /></svg> );
+const IconSiswa = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21a7.5 7.5 0 0 1 13 0" /></svg> );
+const IconPresensi = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18M9 16l2 2 4-4" /></svg> );
+const IconPengajar = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> );
+const IconJurnal = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> );
+const IconMonitoring = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg> );
+
+// PERUBAHAN 1: Menambahkan ikon untuk menu Penilaian
+const IconPenilaian = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></svg> );
+
 // Ikon untuk menu publik
 const IconKehadiran = () => <ClipboardCheck width="40" height="40" />;
 const IconPembelajaran = () => <BookOpen width="40" height="40" />;
 const IconNilai = () => <GraduationCap width="40" height="40" />;
-// === PERUBAHAN 1: Menambahkan kembali ikon monitoring ===
-const IconMonitoring = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg>
-);
-
 
 const sliderImages = [
     { id: 1, src: "/images/info1.jpg", alt: "Informasi Penerimaan Santri Baru" },
@@ -53,24 +43,24 @@ const sliderImages = [
     { id: 3, src: "/images/info3.jpg", alt: "Pengumuman Libur" },
 ];
 
-// === PERUBAHAN 2: Menambahkan kembali menu monitoring untuk admin ===
 const adminMenuItems = [
     { id: 'kelas', title: 'Kelas', description: 'Kelola data kelas dan pengaturan.', icon: <IconKelas />, href: '/classes' },
     { id: 'siswa', title: 'Siswa', description: 'Kelola data siswa TPQ.', icon: <IconSiswa />, href: '/dashboard-students' },
     { id: 'absensi', title: 'Absensi', description: 'Mulai sesi absensi & validasi kehadiran.', icon: <IconPresensi />, href: '/dashboard-attendance' },
     { id: 'pengajar', title: 'Pengajar', description: 'Kelola data pengajar di kelas.', icon: <IconPengajar />, href: '/teachers' },
     { id: 'jurnal', title: 'Jurnal', description: 'Input jurnal pembelajaran harian.', icon: <IconJurnal />, href: '/dashboard-journal' },
+    // PERUBAHAN 2: Menambahkan item menu Penilaian
+    { id: 'penilaian', title: 'Penilaian', description: 'Input & kelola perkembangan nilai siswa.', icon: <IconPenilaian />, href: '/dashboard-assessment' },
     { id: 'monitoring', title: 'Monitoring', description: 'Pantau semua laporan siswa.', icon: <IconMonitoring />, href: '/dashboard-monitoring' },
 ];
 
-// Menu untuk publik/pengguna yang belum login
+// ... (Sisa kode tidak ada perubahan)
 const publicMenuItems = [
     { id: 'kehadiran', title: 'Kehadiran', description: 'Lihat laporan kehadiran siswa.', icon: <IconKehadiran />, target: 'attendance' },
     { id: 'pembelajaran', title: 'Pembelajaran', description: 'Lihat jurnal pembelajaran harian.', icon: <IconPembelajaran />, target: 'learning' },
     { id: 'nilai', title: 'Nilai', description: 'Lihat perkembangan nilai siswa.', icon: <IconNilai />, target: 'grades' },
 ];
 
-// Komponen Modal untuk Pemilihan Kelas
 const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: boolean; onClose: () => void; classes: ClassData[]; menuType: string }) => {
     if (!isOpen) return null;
 
@@ -85,7 +75,7 @@ const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: b
         basePath = "/monitoring/learning";
     } else if (menuType === 'grades') {
         title = "Pilih Kelas untuk Laporan Nilai";
-        basePath = "/monitoring/grades"; 
+        basePath = "monitoring/assessment"; // Arahkan ke form penilaian
     }
 
     return (
@@ -142,7 +132,7 @@ export default function HomePage() {
     fetchClasses();
 
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -226,7 +216,7 @@ export default function HomePage() {
             <div className="mt-12">
                 {session ? (
                     // Tampilan untuk pengguna yang sudah login
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-4 md:gap-8">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
                         {adminMenuItems.map((menu) => (
                             <Link key={menu.id} href={menu.href} className="block">
                                 <div className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full">
@@ -264,4 +254,3 @@ export default function HomePage() {
     </>
   );
 }
-
