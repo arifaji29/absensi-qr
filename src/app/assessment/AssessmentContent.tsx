@@ -37,8 +37,7 @@ export default function AssessmentContent() {
   const [scores, setScores] = useState<Scores>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newAspectName, setNewAspectName] = useState("");
-  const [newAspectScale, setNewAspectScale] =
-    useState<ScaleType>("kualitatif");
+  const [newAspectScale, setNewAspectScale] = useState<ScaleType>("kualitatif");
   const [isSubmittingAspect, setIsSubmittingAspect] = useState(false);
   const [isSavingScores, setIsSavingScores] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -46,32 +45,24 @@ export default function AssessmentContent() {
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [editMode, setEditMode] = useState(true);
 
-  const fetchAssessmentData = useCallback(
-    async (date: string) => {
+  // --- (Semua fungsi handler seperti fetchAssessmentData, handleCreateAspect, dll. biarkan sama persis) ---
+  const fetchAssessmentData = useCallback(async (date: string) => {
       if (!classId) return;
       setLoading(true);
       try {
-        const [studentsRes, aspectsRes, classDetailsRes, scoresRes] =
-          await Promise.all([
-            fetch(`/api/students?class_id=${classId}`),
-            fetch(`/api/assessment/aspects?class_id=${classId}&date=${date}`),
-            fetch(`/api/classes/${classId}/details`),
-            fetch(`/api/assessment/scores?class_id=${classId}&date=${date}`),
-          ]);
-        if (
-          !studentsRes.ok ||
-          !aspectsRes.ok ||
-          !classDetailsRes.ok ||
-          !scoresRes.ok
-        ) {
+        const [studentsRes, aspectsRes, classDetailsRes, scoresRes] = await Promise.all([
+          fetch(`/api/students?class_id=${classId}`),
+          fetch(`/api/assessment/aspects?class_id=${classId}&date=${date}`),
+          fetch(`/api/classes/${classId}/details`),
+          fetch(`/api/assessment/scores?class_id=${classId}&date=${date}`),
+        ]);
+        if (!studentsRes.ok || !aspectsRes.ok || !classDetailsRes.ok || !scoresRes.ok) {
           throw new Error("Gagal memuat data awal.");
         }
-
         const studentsData = await studentsRes.json();
         const aspectsData = await aspectsRes.json();
         const classData = await classDetailsRes.json();
         const scoresData = await scoresRes.json();
-
         setStudents(Array.isArray(studentsData) ? studentsData : []);
         setAspects(Array.isArray(aspectsData) ? aspectsData : []);
         setClassName(classData.name || "...");
@@ -86,34 +77,15 @@ export default function AssessmentContent() {
     },
     [classId]
   );
-
-  useEffect(() => {
-    if (classId) {
-      fetchAssessmentData(selectedDate);
-    }
-  }, [selectedDate, classId, fetchAssessmentData]);
-
+  useEffect(() => { if (classId) { fetchAssessmentData(selectedDate); } }, [selectedDate, classId, fetchAssessmentData]);
   const handleCreateAspect = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAspectName.trim()) {
-      alert("Nama aspek tidak boleh kosong.");
-      return;
-    }
+    if (!newAspectName.trim()) { alert("Nama aspek tidak boleh kosong."); return; }
     setIsSubmittingAspect(true);
     try {
-      const res = await fetch("/api/assessment/aspects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newAspectName,
-          scale_type: newAspectScale,
-          class_id: classId,
-          date: selectedDate,
-        }),
-      });
+      const res = await fetch("/api/assessment/aspects", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newAspectName, scale_type: newAspectScale, class_id: classId, date: selectedDate, }), });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal membuat aspek baru.");
-
       await fetchAssessmentData(selectedDate);
       setNewAspectName("");
       setIsModalOpen(false);
@@ -123,294 +95,181 @@ export default function AssessmentContent() {
       setIsSubmittingAspect(false);
     }
   };
-
-  const handleScoreChange = (
-    studentId: string,
-    aspectId: string,
-    value: string | number
-  ) => {
-    setScores((prev) => ({
-      ...prev,
-      [studentId]: { ...prev[studentId], [aspectId]: value },
-    }));
-  };
-
+  const handleScoreChange = ( studentId: string, aspectId: string, value: string | number ) => { setScores((prev) => ({ ...prev, [studentId]: { ...prev[studentId], [aspectId]: value }, })); };
   const handleSaveAllScores = async () => {
     setIsSavingScores(true);
     try {
-      const res = await fetch("/api/assessment/scores", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ classId, date: selectedDate, scores }),
-      });
+      const res = await fetch("/api/assessment/scores", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classId, date: selectedDate, scores }), });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Gagal menyimpan data nilai.");
-
       alert(data.message || "Nilai berhasil disimpan!");
       setEditMode(false);
     } catch (error) {
-      alert(
-        error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan."
-      );
+      alert( error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan." );
     } finally {
       setIsSavingScores(false);
     }
   };
-
   const handleDeleteAspect = async (aspectId: string) => {
-    if (
-      !confirm(
-        "Yakin ingin menghapus aspek penilaian ini? Semua nilai yang sudah diisi pada aspek ini akan ikut terhapus."
-      )
-    )
-      return;
+    if (!confirm("Yakin ingin menghapus aspek penilaian ini? Semua nilai yang sudah diisi pada aspek ini akan ikut terhapus.")) return;
     try {
-      const res = await fetch(`/api/assessment/aspects/${aspectId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Gagal menghapus aspek.");
-      }
+      const res = await fetch(`/api/assessment/aspects/${aspectId}`, { method: "DELETE", });
+      if (!res.ok) { const data = await res.json(); throw new Error(data.error || "Gagal menghapus aspek."); }
       alert("Aspek berhasil dihapus.");
       await fetchAssessmentData(selectedDate);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Terjadi kesalahan.");
     }
   };
-
-  const handleResetScores = () => {
-    if (
-      confirm(
-        "Apakah Anda yakin ingin mereset semua nilai yang telah diisi di form ini? Perubahan ini hanya akan diterapkan setelah Anda menekan tombol Simpan."
-      )
-    ) {
-      setScores({});
-    }
-  };
+  const handleResetScores = () => { if (confirm("Apakah Anda yakin ingin mereset semua nilai yang telah diisi di form ini? Perubahan ini hanya akan diterapkan setelah Anda menekan tombol Simpan.")) { setScores({}); } };
 
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <Link
-          href="/dashboard"
-          className="flex items-center text-gray-600 hover:text-gray-800"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Kembali
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-800">
-          Penilaian - {className}
-        </h1>
-        <Link
-          href="/"
-          className="flex items-center text-gray-600 hover:text-gray-800"
-        >
-          <Home className="w-5 h-5 mr-2" />
-          Beranda
-        </Link>
-      </div>
-
-      {/* Pilih Tanggal */}
-      <div className="mb-4">
-        <label className="mr-2 font-medium text-gray-700">Tanggal:</label>
-        <input
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          className="border rounded p-1"
-        />
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center py-10">
-          <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
-          <span className="ml-2">Memuat data...</span>
+      <div className="bg-white p-6 rounded-xl shadow-md max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
+            <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                    Form Penilaian Siswa Kelas {className}
+                </h1>
+            </div>
+            <div className="flex items-center gap-2">
+                <Link href="/dashboard-assessment" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+                    <ArrowLeft size={18} />
+                    <span>Back</span>
+                </Link>
+                <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
+                    <Home size={18} />
+                    <span>Home</span>
+                </Link>
+            </div>
         </div>
-      ) : (
-        <>
-          {/* Table */}
-          <div className="overflow-x-auto bg-white shadow-md rounded-lg border border-gray-200">
-            <table className="w-full border-collapse">
-              <thead className="bg-gray-100 text-gray-700">
+        
+        {/* Kontrol */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-6">
+            <div className="w-full sm:w-auto">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Penilaian</label>
+              <input 
+                type="date" 
+                value={selectedDate} 
+                onChange={(e) => setSelectedDate(e.target.value)} 
+                className="p-2 border rounded-md bg-white w-full sm:w-auto"
+              />
+            </div>
+            {editMode && (
+              <button 
+                onClick={() => setIsModalOpen(true)} 
+                className="flex-shrink-0 flex items-center justify-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 font-semibold shadow-sm w-full sm:w-auto"
+              >
+                <Plus size={18} />
+                Tambah Aspek Penilaian
+              </button>
+            )}
+        </div>
+
+        {/* Modal */}
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
+            <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md relative">
+                <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <X size={24}/>
+                </button>
+              <h2 className="text-2xl font-bold mb-6">Tambah Aspek Penilaian Baru</h2>
+              <form onSubmit={handleCreateAspect} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Aspek</label>
+                  <input type="text" value={newAspectName} onChange={(e) => setNewAspectName(e.target.value)} className="border p-3 w-full rounded-lg" placeholder="Contoh: Hafalan, Tajwid" required disabled={isSubmittingAspect}/>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Skala Penilaian</label>
+                  <select value={newAspectScale} onChange={(e) => setNewAspectScale(e.target.value as ScaleType)} className="border p-3 w-full rounded-lg bg-white" disabled={isSubmittingAspect}>
+                    <option value="kualitatif">Kualitatif (Sangat Baik - Kurang)</option>
+                    <option value="numerik">Numerik (1 - 100)</option>
+                  </select>
+                </div>
+                <div className="flex justify-end pt-4">
+                  <button type="submit" className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 flex items-center gap-2 disabled:bg-blue-400" disabled={isSubmittingAspect}>
+                    {isSubmittingAspect && <Loader2 size={18} className="animate-spin"/>}
+                    {isSubmittingAspect ? 'Membuat...' : 'Buat Aspek'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Tabel Penilaian */}
+        {loading ? <p className="text-center py-12">Memuat data...</p> : (
+            <div className="overflow-x-auto border rounded-lg">
+            <table className="w-full text-sm">
+                <thead className="bg-gray-100 text-left text-gray-600">
                 <tr>
-                  <th className="border p-2">No</th>
-                  <th className="border p-2">Nama Siswa</th>
-                  {aspects.map((aspect) => (
-                    <th key={aspect.id} className="border p-2">
-                      <div className="flex items-center justify-between">
+                    <th className="p-4 font-semibold sticky left-0 bg-gray-100 z-10 w-48">Nama Siswa</th>
+                    {aspects.map(aspect => (
+                    <th key={aspect.id} className="p-4 font-semibold min-w-[150px]">
+                      <div className="flex items-center justify-between gap-2">
                         <span>{aspect.name}</span>
                         {editMode && (
-                          <button
-                            onClick={() => handleDeleteAspect(aspect.id)}
-                            className="text-red-500 hover:text-red-700 ml-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
+                          <button onClick={() => handleDeleteAspect(aspect.id)} className="text-red-400 hover:text-red-600" title="Hapus Aspek">
+                            <Trash2 size={16}/>
                           </button>
                         )}
                       </div>
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {students.map((student, idx) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="border p-2 text-center">{idx + 1}</td>
-                    <td className="border p-2">{student.name}</td>
-                    {aspects.map((aspect) => (
-                      <td key={aspect.id} className="border p-2 text-center">
-                        {editMode ? (
-                          aspect.scale_type === "numerik" ? (
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              value={
-                                scores[student.id]?.[aspect.id]?.toString() || ""
-                              }
-                              onChange={(e) =>
-                                handleScoreChange(
-                                  student.id,
-                                  aspect.id,
-                                  e.target.value
-                                )
-                              }
-                              className="border rounded p-1 w-20 text-center"
-                            />
-                          ) : (
-                            <select
-                              value={
-                                scores[student.id]?.[aspect.id]?.toString() || ""
-                              }
-                              onChange={(e) =>
-                                handleScoreChange(
-                                  student.id,
-                                  aspect.id,
-                                  e.target.value
-                                )
-                              }
-                              className="border rounded p-1"
-                            >
-                              <option value="">Pilih</option>
-                              {QUALITATIVE_SCALES.map((scale) => (
-                                <option key={scale} value={scale}>
-                                  {scale}
-                                </option>
-                              ))}
-                            </select>
-                          )
-                        ) : (
-                          <span>
-                            {scores[student.id]?.[aspect.id]?.toString() || "-"}
-                          </span>
-                        )}
-                      </td>
                     ))}
-                  </tr>
+                </tr>
+                </thead>
+                <tbody>
+                {students.map(student => (
+                    <tr key={student.id} className="border-b last:border-b-0 hover:bg-gray-50">
+                    <td className="p-3 font-medium text-gray-800 sticky left-0 bg-white z-10">{student.name}</td>
+                    {aspects.map(aspect => (
+                        <td key={aspect.id} className="p-2">
+                        {aspect.scale_type === 'kualitatif' ? (
+                            <select className="w-full p-2 border rounded-md bg-white disabled:bg-gray-100 disabled:cursor-not-allowed" value={scores[student.id]?.[aspect.id] as string || ''} onChange={(e) => handleScoreChange(student.id, aspect.id, e.target.value)} disabled={!editMode}>
+                            <option value="" disabled>-- Pilih --</option>
+                            {QUALITATIVE_SCALES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        ) : (
+                            <input type="number" min="0" max="100" className="w-full p-2 border rounded-md disabled:bg-gray-100 disabled:cursor-not-allowed" value={scores[student.id]?.[aspect.id] as number || ''} onChange={(e) => handleScoreChange(student.id, aspect.id, e.target.valueAsNumber)} disabled={!editMode}/>
+                        )}
+                        </td>
+                    ))}
+                    </tr>
                 ))}
-              </tbody>
+                </tbody>
             </table>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            {editMode ? (
-              <>
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Aspek
-                </button>
-                <button
-                  onClick={handleSaveAllScores}
-                  disabled={isSavingScores}
-                  className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                >
-                  {isSavingScores ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4 mr-2" />
-                  )}
-                  Simpan Nilai
-                </button>
-                <button
-                  onClick={handleResetScores}
-                  className="flex items-center bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" /> Reset Nilai
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setEditMode(true)}
-                className="flex items-center bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
-              >
-                <Edit className="w-4 h-4 mr-2" /> Edit Nilai
-              </button>
-            )}
-          </div>
-
-          {/* Modal Tambah Aspek */}
-          {isModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
-              <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-lg font-semibold">
-                    Tambah Aspek Penilaian
-                  </h2>
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="text-gray-500 hover:text-gray-700"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <form onSubmit={handleCreateAspect}>
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium mb-1">
-                      Nama Aspek
-                    </label>
-                    <input
-                      type="text"
-                      value={newAspectName}
-                      onChange={(e) => setNewAspectName(e.target.value)}
-                      className="w-full border rounded p-2"
-                      placeholder="Contoh: Disiplin"
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="block text-sm font-medium mb-1">
-                      Skala Penilaian
-                    </label>
-                    <select
-                      value={newAspectScale}
-                      onChange={(e) =>
-                        setNewAspectScale(e.target.value as ScaleType)
-                      }
-                      className="w-full border rounded p-2"
-                    >
-                      <option value="kualitatif">Kualitatif</option>
-                      <option value="numerik">Numerik (0-100)</option>
-                    </select>
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={isSubmittingAspect}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {isSubmittingAspect ? "Menyimpan..." : "Simpan"}
-                    </button>
-                  </div>
-                </form>
-              </div>
             </div>
-          )}
-        </>
-      )}
+        )}
+        
+        {/* Tombol Aksi Bawah */}
+        {aspects.length > 0 && !loading && (
+          <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4">
+            {/* PERUBAHAN: Tombol "Tambah Aspek" di bagian bawah ini dihapus */}
+            {/* <div> {editMode && ( <button>...</button> )} </div> */}
+            
+            <div className="flex flex-col sm:flex-row justify-end items-center gap-4 w-full sm:w-auto">
+              {editMode ? (
+                <>
+                  <button onClick={handleResetScores} className="px-6 py-2 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 flex items-center gap-2 w-full sm:w-auto justify-center">
+                    <RotateCcw size={18} />
+                    Reset Nilai
+                  </button>
+                  <button onClick={handleSaveAllScores} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg flex items-center gap-2 disabled:bg-green-400 w-full sm:w-auto justify-center" disabled={isSavingScores}>
+                    {isSavingScores ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
+                    {isSavingScores ? 'Menyimpan...' : 'Simpan & Kunci'}
+                  </button>
+                </>
+              ) : (
+                <button onClick={() => setEditMode(true)} className="px-8 py-3 bg-yellow-500 text-white font-bold rounded-lg hover:bg-yellow-600 shadow-lg flex items-center gap-2 w-full sm:w-auto justify-center">
+                  <Edit size={20} />
+                  Edit Penilaian
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
