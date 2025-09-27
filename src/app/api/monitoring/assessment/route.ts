@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// PERBAIKAN: Definisikan tipe data yang spesifik untuk hasil akhir scoresObject
 type ScoresObject = { [studentId: string]: { [aspectId: string]: string | number } };
 
 export async function GET(req: NextRequest) {
@@ -34,25 +33,19 @@ export async function GET(req: NextRequest) {
 
     if (aspectsError) throw aspectsError;
 
-    // PERBAIKAN: Logika disederhanakan untuk menghindari variabel yang tidak terpakai
-    const nameTotals: { [key: string]: number } = {};
-    aspects.forEach(aspect => {
-        nameTotals[aspect.name] = (nameTotals[aspect.name] || 0) + 1;
-    });
-
-    const nameRunningCounts: { [key: string]: number } = {};
+    // ==========================================================
+    // === PERBAIKAN: Logika penamaan aspek disederhanakan ===
+    // ==========================================================
     const processedAspects = aspects.map(aspect => {
-        // Buat objek baru agar tidak mengirim kolom 'date' yang tidak perlu ke frontend
-        const newAspect = {
+        // Ambil tanggalnya (misal: '21' dari '2025-09-21')
+        const day = aspect.date.split('-')[2];
+        
+        // Buat objek baru dengan nama yang sudah ditambahkan tanggal
+        return {
             id: aspect.id,
-            name: aspect.name,
+            name: `${aspect.name} (${day})`, // Cth: "Hafalan (25)"
             scale_type: aspect.scale_type,
         };
-        if (nameTotals[aspect.name] > 1) {
-            nameRunningCounts[aspect.name] = (nameRunningCounts[aspect.name] || 0) + 1;
-            newAspect.name = `${aspect.name} ${nameRunningCounts[aspect.name]}`;
-        }
-        return newAspect;
     });
 
     const { data: students, error: studentsError } = await supabase
@@ -73,7 +66,6 @@ export async function GET(req: NextRequest) {
 
     if (scoresError) throw scoresError;
 
-    // PERBAIKAN: Ganti 'any' dengan tipe 'ScoresObject'
     const scoresObject = scores.reduce((acc: ScoresObject, score) => {
         if (!acc[score.student_id]) {
             acc[score.student_id] = {};
