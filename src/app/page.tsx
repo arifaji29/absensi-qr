@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Session } from "@supabase/auth-helpers-nextjs";
+// PERUBAHAN: Tambahkan ikon HandCoins
 import { LogOut, LogIn, UserPlus, ChevronLeft, ChevronRight, X, BookOpen, GraduationCap, ClipboardCheck, HandCoins } from "lucide-react";
 
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -20,7 +21,7 @@ type ClassData = {
   name: string;
 };
 
-// Kumpulan Ikon SVG
+// Kumpulan Ikon SVG (Admin)
 const IconKelas = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3H8v4h8V3z" /></svg> );
 const IconSiswa = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21a7.5 7.5 0 0 1 13 0" /></svg> );
 const IconPresensi = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18M9 16l2 2 4-4" /></svg> );
@@ -34,6 +35,8 @@ const IconMonitoring = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40
 const IconKehadiran = () => <ClipboardCheck width="40" height="40" />;
 const IconPembelajaran = () => <BookOpen width="40" height="40" />;
 const IconNilai = () => <GraduationCap width="40" height="40" />;
+// PERUBAHAN: Menambahkan ikon Infaq untuk publik
+const IconPublikInfaq = () => <HandCoins width="40" height="40" />;
 
 const sliderImages = [
     { id: 1, src: "/images/info1.jpg", alt: "Informasi Penerimaan Santri Baru" },
@@ -52,10 +55,12 @@ const adminMenuItems = [
     { id: 'monitoring', title: 'Monitoring', description: 'Pantau semua laporan siswa.', icon: <IconMonitoring />, href: '/dashboard-monitoring' },
 ];
 
+// PERUBAHAN: Menambahkan item menu Infaq ke daftar publik
 const publicMenuItems = [
     { id: 'kehadiran', title: 'Kehadiran', description: 'Lihat laporan kehadiran siswa.', icon: <IconKehadiran />, target: 'attendance' },
     { id: 'pembelajaran', title: 'Pembelajaran', description: 'Lihat jurnal pembelajaran harian.', icon: <IconPembelajaran />, target: 'learning' },
     { id: 'nilai', title: 'Nilai', description: 'Lihat perkembangan nilai siswa.', icon: <IconNilai />, target: 'grades' },
+    { id: 'infaq', title: 'Infaq', description: 'Lihat rekapitulasi infaq siswa.', icon: <IconPublikInfaq />, target: 'infaq' },
 ];
 
 const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: boolean; onClose: () => void; classes: ClassData[]; menuType: string }) => {
@@ -73,6 +78,11 @@ const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: b
     } else if (menuType === 'grades') {
         title = "Pilih Kelas untuk Laporan Penilaian";
         basePath = "/monitoring/assessment";
+    } 
+    // PERUBAHAN: Menambahkan logika untuk menu Infaq
+    else if (menuType === 'infaq') {
+        title = "Pilih Kelas untuk Laporan Infaq";
+        basePath = "/monitoring/infaq";
     }
 
     return (
@@ -228,7 +238,7 @@ export default function HomePage() {
                     // Tampilan untuk pengguna yang belum login
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">Monitoring Publik</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-8 max-w-4xl mx-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 md:gap-8 max-w-5xl mx-auto">
                             {publicMenuItems.map((menu) => (
                                 <div key={menu.id} onClick={() => openModal(menu.target)} className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full">
                                     <div className="text-green-500 group-hover:scale-110 transition-transform">{menu.icon}</div>

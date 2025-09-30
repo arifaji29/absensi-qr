@@ -28,11 +28,13 @@ export async function middleware(req: NextRequest) {
     "/journal",
     "/teachers",
     "/assessment",
+    "/infaq",
     "/dashboard-students",
     "/dashboard-monitoring",
     "/dashboard-journal",
     "/dashboard-attendance",
     "/dashboard-assessment",
+    "/dashboard-infaq",
 
   ];
 
