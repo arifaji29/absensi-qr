@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, BookOpen, BarChart2, CalendarDays } from "lucide-react";
+// PERUBAHAN: Tambahkan ikon HandCoins
+import { ArrowLeft, Home, BookOpen, BarChart2, CalendarDays, HandCoins } from "lucide-react";
 
 type ClassItem = { 
   id: string; 
@@ -40,7 +41,7 @@ export default function DashboardMonitoringPage() {
               Dashboard Monitoring
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              Pilih kelas untuk melihat laporan kehadiran, pembelajaran, dan nilai.
+              Pilih kelas untuk melihat laporan kehadiran, pembelajaran, nilai, dan infaq.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -75,7 +76,6 @@ export default function DashboardMonitoringPage() {
                         {cls.name}
                       </td>
                       <td className="p-4">
-                        {/* Kontainer Tombol Aksi yang Responsif */}
                         <div className="flex flex-col sm:flex-row gap-2">
                           <Link 
                             href={`/monitoring/attendance?class_id=${cls.id}`} 
@@ -97,6 +97,14 @@ export default function DashboardMonitoringPage() {
                           >
                             <BarChart2 size={14} />
                             <span>Nilai</span>
+                          </Link>
+                          {/* PERUBAHAN: Tombol baru untuk Monitoring Infaq */}
+                          <Link 
+                            href={`/monitoring/infaq?class_id=${cls.id}`}
+                            className="flex items-center justify-center gap-2 px-4 py-2 font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors text-xs"
+                          >
+                            <HandCoins size={14} />
+                            <span>Infaq</span>
                           </Link>
                         </div>
                       </td>

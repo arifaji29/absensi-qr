@@ -6,9 +6,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Session } from "@supabase/auth-helpers-nextjs";
-import { LogOut, LogIn, UserPlus, ChevronLeft, ChevronRight, X, BookOpen, GraduationCap, ClipboardCheck } from "lucide-react";
+import { LogOut, LogIn, UserPlus, ChevronLeft, ChevronRight, X, BookOpen, GraduationCap, ClipboardCheck, HandCoins } from "lucide-react";
 
-// 1. IMPORT SWIPER
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Navigation, Pagination, Autoplay } from 'swiper/modules';
 import 'swiper/css';
@@ -22,15 +21,14 @@ type ClassData = {
 };
 
 // Kumpulan Ikon SVG
-const IconKelas = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3H8v4h8V3z" /></svg> );
-const IconSiswa = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21a7.5 7.5 0 0 1 13 0" /></svg> );
-const IconPresensi = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18M9 16l2 2 4-4" /></svg> );
-const IconPengajar = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> );
+const IconKelas = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2" /><path d="M16 3H8v4h8V3z" /></svg> );
+const IconSiswa = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="7" r="4" /><path d="M5.5 21a7.5 7.5 0 0 1 13 0" /></svg> );
+const IconPresensi = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18M9 16l2 2 4-4" /></svg> );
+const IconPengajar = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> );
 const IconJurnal = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> );
-const IconMonitoring = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg> );
-
-// PERUBAHAN 1: Menambahkan ikon untuk menu Penilaian
 const IconPenilaian = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></svg> );
+const IconInfaq = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> );
+const IconMonitoring = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg> );
 
 // Ikon untuk menu publik
 const IconKehadiran = () => <ClipboardCheck width="40" height="40" />;
@@ -49,12 +47,11 @@ const adminMenuItems = [
     { id: 'absensi', title: 'Absensi', description: 'Mulai sesi absensi & validasi kehadiran.', icon: <IconPresensi />, href: '/dashboard-attendance' },
     { id: 'pengajar', title: 'Pengajar', description: 'Kelola data pengajar di kelas.', icon: <IconPengajar />, href: '/teachers' },
     { id: 'jurnal', title: 'Jurnal', description: 'Input jurnal pembelajaran harian.', icon: <IconJurnal />, href: '/dashboard-journal' },
-    // PERUBAHAN 2: Menambahkan item menu Penilaian
     { id: 'penilaian', title: 'Penilaian', description: 'Input & kelola perkembangan nilai siswa.', icon: <IconPenilaian />, href: '/dashboard-assessment' },
+    { id: 'infaq', title: 'Infaq', description: 'Catat dan kelola data infaq siswa.', icon: <IconInfaq />, href: '/dashboard-infaq' },
     { id: 'monitoring', title: 'Monitoring', description: 'Pantau semua laporan siswa.', icon: <IconMonitoring />, href: '/dashboard-monitoring' },
 ];
 
-// ... (Sisa kode tidak ada perubahan)
 const publicMenuItems = [
     { id: 'kehadiran', title: 'Kehadiran', description: 'Lihat laporan kehadiran siswa.', icon: <IconKehadiran />, target: 'attendance' },
     { id: 'pembelajaran', title: 'Pembelajaran', description: 'Lihat jurnal pembelajaran harian.', icon: <IconPembelajaran />, target: 'learning' },
@@ -74,8 +71,8 @@ const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: b
         title = "Pilih Kelas untuk Laporan Pembelajaran";
         basePath = "/monitoring/learning";
     } else if (menuType === 'grades') {
-        title = "Pilih Kelas untuk Laporan Nilai";
-        basePath = "monitoring/assessment"; // Arahkan ke form penilaian
+        title = "Pilih Kelas untuk Laporan Penilaian";
+        basePath = "/monitoring/assessment";
     }
 
     return (
