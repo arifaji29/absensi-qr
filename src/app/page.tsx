@@ -6,7 +6,6 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import type { Session } from "@supabase/auth-helpers-nextjs";
-// PERUBAHAN: Tambahkan ikon HandCoins
 import { LogOut, LogIn, UserPlus, ChevronLeft, ChevronRight, X, BookOpen, GraduationCap, ClipboardCheck, HandCoins } from "lucide-react";
 
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -28,15 +27,14 @@ const IconPresensi = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" 
 const IconPengajar = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg> );
 const IconJurnal = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> );
 const IconPenilaian = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></svg> );
-const IconInfaq = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12v10H4V12"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> );
+const IconInfaqAdmin = () => <HandCoins width="40" height="40" />;
 const IconMonitoring = () => ( <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" /></svg> );
 
 // Ikon untuk menu publik
 const IconKehadiran = () => <ClipboardCheck width="40" height="40" />;
 const IconPembelajaran = () => <BookOpen width="40" height="40" />;
 const IconNilai = () => <GraduationCap width="40" height="40" />;
-// PERUBAHAN: Menambahkan ikon Infaq untuk publik
-const IconPublikInfaq = () => <HandCoins width="40" height="40" />;
+const IconInfaqPublik = () => <HandCoins width="40" height="40" />;
 
 const sliderImages = [
     { id: 1, src: "/images/info1.jpg", alt: "Informasi Penerimaan Santri Baru" },
@@ -51,16 +49,15 @@ const adminMenuItems = [
     { id: 'pengajar', title: 'Pengajar', description: 'Kelola data pengajar di kelas.', icon: <IconPengajar />, href: '/teachers' },
     { id: 'jurnal', title: 'Jurnal', description: 'Input jurnal pembelajaran harian.', icon: <IconJurnal />, href: '/dashboard-journal' },
     { id: 'penilaian', title: 'Penilaian', description: 'Input & kelola perkembangan nilai siswa.', icon: <IconPenilaian />, href: '/dashboard-assessment' },
-    { id: 'infaq', title: 'Infaq', description: 'Catat dan kelola data infaq siswa.', icon: <IconInfaq />, href: '/dashboard-infaq' },
+    { id: 'infaq', title: 'Infaq', description: 'Catat dan kelola data infaq siswa.', icon: <IconInfaqAdmin />, href: '/dashboard-infaq' },
     { id: 'monitoring', title: 'Monitoring', description: 'Pantau semua laporan siswa.', icon: <IconMonitoring />, href: '/dashboard-monitoring' },
 ];
 
-// PERUBAHAN: Menambahkan item menu Infaq ke daftar publik
 const publicMenuItems = [
     { id: 'kehadiran', title: 'Kehadiran', description: 'Lihat laporan kehadiran siswa.', icon: <IconKehadiran />, target: 'attendance' },
     { id: 'pembelajaran', title: 'Pembelajaran', description: 'Lihat jurnal pembelajaran harian.', icon: <IconPembelajaran />, target: 'learning' },
     { id: 'nilai', title: 'Nilai', description: 'Lihat perkembangan nilai siswa.', icon: <IconNilai />, target: 'grades' },
-    { id: 'infaq', title: 'Infaq', description: 'Lihat rekapitulasi infaq siswa.', icon: <IconPublikInfaq />, target: 'infaq' },
+    { id: 'infaq', title: 'Infaq', description: 'Lihat rekapitulasi infaq siswa.', icon: <IconInfaqPublik />, target: 'infaq' },
 ];
 
 const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: boolean; onClose: () => void; classes: ClassData[]; menuType: string }) => {
@@ -79,7 +76,6 @@ const ClassSelectionModal = ({ isOpen, onClose, classes, menuType }: { isOpen: b
         title = "Pilih Kelas untuk Laporan Penilaian";
         basePath = "/monitoring/assessment";
     } 
-    // PERUBAHAN: Menambahkan logika untuk menu Infaq
     else if (menuType === 'infaq') {
         title = "Pilih Kelas untuk Laporan Infaq";
         basePath = "/monitoring/infaq";
@@ -220,7 +216,7 @@ export default function HomePage() {
             </div>
 
             {/* Menu Aplikasi */}
-            <div className="mt-12">
+            <div className="mt-12 w-full">
                 {session ? (
                     // Tampilan untuk pengguna yang sudah login
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
@@ -238,7 +234,7 @@ export default function HomePage() {
                     // Tampilan untuk pengguna yang belum login
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800 mb-6">Monitoring Publik</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 md:gap-8 max-w-5xl mx-auto">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-8 max-w-5xl mx-auto">
                             {publicMenuItems.map((menu) => (
                                 <div key={menu.id} onClick={() => openModal(menu.target)} className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-green-200 bg-white p-6 shadow-lg transition-all hover:border-green-400 hover:shadow-xl hover:-translate-y-1 cursor-pointer h-full">
                                     <div className="text-green-500 group-hover:scale-110 transition-transform">{menu.icon}</div>
