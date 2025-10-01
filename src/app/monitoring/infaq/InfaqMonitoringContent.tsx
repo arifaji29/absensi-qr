@@ -86,7 +86,6 @@ export default function InfaqMonitoringContent() {
       formatCurrency(infaqSummary[student.id] || 0)
     ]);
     
-    // PERBAIKAN: Memberi tipe eksplisit pada tableFooter
     const tableFooter: CellInput[][] = [
         [{ 
             content: 'Total Infaq Kelas', 
@@ -120,21 +119,21 @@ export default function InfaqMonitoringContent() {
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
       <div className="bg-white p-6 rounded-xl shadow-md">
         
+        {/* Header dan Kontrol (tidak berubah) */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Monitoring Infaq {className ? `Kelas ${className}` : ""}</h1>
             <p className="text-sm text-gray-500 mt-1">Laporan Infaq Bulan: <strong>{monthNames[selectedMonth]} {selectedYear}</strong></p>
           </div>
           <div className="flex items-center gap-2">
-            {/* <Link href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium text-sm transition-colors">
+            <Link href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium text-sm transition-colors">
                 <ArrowLeft size={18} /><span>Back</span>
-            </Link> */}
+            </Link>
             <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium text-sm transition-colors">
                 <Home size={18} /><span>Home</span>
             </Link>
           </div>
         </div>
-
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
           <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 items-center w-full md:w-auto">
             <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm">
@@ -157,11 +156,12 @@ export default function InfaqMonitoringContent() {
             <table className="w-full text-sm">
               <thead className="bg-gray-100 text-gray-600">
                 <tr>
-                  <th className="p-3 font-semibold text-left sticky left-0 bg-gray-100 z-10 border-r min-w-[200px]">Nama Siswa</th>
+                  {/* PERBAIKAN: Lebar minimum kolom diubah untuk mobile dan desktop */}
+                  <th className="p-3 font-semibold text-left sticky left-0 bg-gray-100 z-10 border-r min-w-[120px] sm:min-w-[200px]">Nama Siswa</th>
                   {dateHeaders.map(day => (
                     <th key={day} className="p-3 font-semibold text-center border-l min-w-[70px]">{String(day).padStart(2, '0')}</th>
                   ))}
-                  <th className="p-3 font-semibold text-right sticky right-0 bg-gray-100 z-10 border-l min-w-[150px]">Total Infaq</th>
+                  <th className="p-3 font-semibold text-right sticky right-0 bg-gray-100 z-10 border-l min-w-[100px] sm:min-w-[150px]">Total Infaq</th>
                 </tr>
               </thead>
               <tbody>

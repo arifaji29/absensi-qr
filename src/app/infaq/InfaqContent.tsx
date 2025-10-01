@@ -26,21 +26,27 @@ export default function InfaqContent() {
     if (!classId) return;
     setLoading(true);
     try {
-      const [studentsRes, infaqRes, classDetailsRes] = await Promise.all([
+      // Ambil juga status validasi
+      const [studentsRes, infaqRes, classDetailsRes, validationRes] = await Promise.all([
         fetch(`/api/students?class_id=${classId}`),
         fetch(`/api/infaq?class_id=${classId}&date=${date}`),
         fetch(`/api/classes/${classId}/details`),
+        fetch(`/api/infaq/validate?class_id=${classId}&date=${date}`) // Panggil API validasi
       ]);
-      if (!studentsRes.ok || !infaqRes.ok || !classDetailsRes.ok) throw new Error("Gagal memuat data");
+      if (!studentsRes.ok || !infaqRes.ok || !classDetailsRes.ok || !validationRes.ok) throw new Error("Gagal memuat data");
 
       const studentsData = await studentsRes.json();
       const infaqData = await infaqRes.json();
       const classData = await classDetailsRes.json();
+      const validationData = await validationRes.json();
 
       setStudents(studentsData || []);
       setInfaqData(infaqData || {});
       setClassName(classData.name || "...");
-      setEditMode(true);
+      
+      // Atur mode edit berdasarkan status validasi dari database
+      setEditMode(!validationData.isValidated);
+
     } catch (error) {
       console.error(error);
       alert("Gagal memuat data infaq.");
@@ -63,15 +69,27 @@ export default function InfaqContent() {
   const handleSaveInfaq = async () => {
     setIsSaving(true);
     try {
-      const res = await fetch('/api/infaq', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classId, date: selectedDate, infaqData }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Gagal menyimpan data");
-      alert(data.message || "Data infaq berhasil disimpan!");
-      setEditMode(false);
+      // Simpan data infaq dan validasi secara bersamaan
+      const [saveScoresRes, validateRes] = await Promise.all([
+        fetch('/api/infaq', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ classId, date: selectedDate, infaqData }),
+        }),
+        fetch('/api/infaq/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ classId, date: selectedDate }),
+        })
+      ]);
+      
+      if (!saveScoresRes.ok || !validateRes.ok) {
+        throw new Error("Gagal menyimpan atau mengunci data.");
+      }
+
+      alert("Data infaq berhasil disimpan dan dikunci!");
+      setEditMode(false); // Langsung kunci form setelah berhasil
+
     } catch (error) {
       alert(error instanceof Error ? error.message : "Terjadi kesalahan");
     } finally {
@@ -87,7 +105,6 @@ export default function InfaqContent() {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Form Infaq Kelas {className}</h1>
           </div>
-          {/* PERBAIKAN: className untuk tombol diisi lengkap */}
           <div className="flex items-center gap-2">
             <Link href="/dashboard-infaq" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
               <ArrowLeft size={18} />

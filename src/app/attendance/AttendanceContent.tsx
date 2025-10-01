@@ -4,44 +4,35 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import Link from "next/link";
-import { ArrowLeft, Home, QrCode, RotateCcw, ShieldCheck, CheckCircle, Edit } from "lucide-react";
+import { ArrowLeft, Home, QrCode, RotateCcw, Edit, Check, Loader2 } from "lucide-react";
 
-// Tipe data
-type Attendance = {
-  student_id: string;
-  name: string;
-  status: string;
-  checked_in_at: string | null;
-};
-
-type Teacher = {
-  id: string;
-  name: string;
+// Tipe Data
+type Attendance = { 
+  student_id: string; 
+  name: string; 
+  status: string; 
+  checked_in_at: string | null; 
 };
 
 // Fungsi helper
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta'});
 
-export default function AttendancePage() {
+export default function AttendanceContent() {
   const searchParams = useSearchParams();
   const classId = searchParams.get("class_id") || "";
 
+  // State Management
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(getTodayString());
-  const [isValidated, setIsValidated] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
-  const [classTeachers, setClassTeachers] = useState<Teacher[]>([]);
-  const [selectedValidatorId, setSelectedValidatorId] = useState<string>("");
-  const [validatorName, setValidatorName] = useState<string | null>(null);
   const [className, setClassName] = useState("");
-  
-  // PERUBAHAN: State baru untuk mode absensi
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [attendanceMode, setAttendanceMode] = useState<'qr' | 'manual'>('qr');
-
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [editMode, setEditMode] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     audioRef.current = new Audio("/success-sound.mp3");
@@ -52,112 +43,105 @@ export default function AttendancePage() {
     if (!classId) return;
     setLoading(true);
     try {
-      const [studentRes, validationRes, teachersRes, classRes] = await Promise.all([
+      const [studentRes, validationRes, classRes] = await Promise.all([
         fetch(`/api/attendance?class_id=${classId}&date=${date}`),
         fetch(`/api/attendance/status?class_id=${classId}&date=${date}`),
-        fetch(`/api/classes/${classId}/teachers`),
         fetch(`/api/classes/${classId}/details`),
       ]);
       const studentData = await studentRes.json();
       const validationData = await validationRes.json();
-      const teachersData = await teachersRes.json();
       const classData = await classRes.json();
 
       setAttendance(Array.isArray(studentData) ? studentData : []);
-      setIsValidated(validationData.isValidated || false);
-      setValidatorName(validationData.validatorName || null);
-      setClassTeachers(Array.isArray(teachersData) ? teachersData : []);
       setClassName(classData.name || "");
+      setEditMode(!validationData.isValidated);
+
     } catch (err) {
       console.error("Gagal memuat data:", err);
+      alert("Gagal memuat data absensi.");
     } finally {
       setLoading(false);
     }
   }, [classId]);
 
   useEffect(() => {
-    fetchData(selectedDate);
-  }, [fetchData, selectedDate]);
-
-  const handleStatusChange = useCallback(async (student_id: string, new_status: string) => {
-    setAttendance((prev) => prev.map((s) => (s.student_id === student_id ? { ...s, status: new_status } : s)));
-    try {
-      const res = await fetch(`/api/attendance/check`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ class_id: classId, student_id, status: new_status, date: selectedDate }),
-      });
-      if (!res.ok) throw new Error("Gagal menyimpan perubahan ke server");
-      // Memainkan suara hanya jika status baru adalah "Hadir"
-      if (new_status === "Hadir" && audioRef.current) {
-        audioRef.current.play().catch(console.error);
-      }
-      await fetchData(selectedDate);
-    } catch (err) {
-      console.error("Gagal update status:", err);
-      alert("Gagal menyimpan perubahan. Memuat ulang data.");
+    if(classId) {
       fetchData(selectedDate);
     }
-  }, [classId, selectedDate, fetchData]);
+  }, [fetchData, selectedDate, classId]);
+
+  const handleStatusChange = useCallback((student_id: string, new_status: string) => {
+    setAttendance((prev) => 
+      prev.map((s) => 
+        s.student_id === student_id 
+          ? { ...s, status: new_status, checked_in_at: new_status === 'Hadir' && !s.checked_in_at ? new Date().toISOString() : s.checked_in_at } 
+          : s
+      )
+    );
+    
+    if (new_status === "Hadir" && audioRef.current) {
+        audioRef.current.play().catch(console.error);
+    }
+  }, []);
+
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      const saveAttendanceRes = await fetch('/api/attendance/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class_id: classId, date: selectedDate, attendanceData: attendance })
+      });
+      if (!saveAttendanceRes.ok) throw new Error("Gagal menyimpan data absensi.");
+
+      const validateRes = await fetch('/api/attendance/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class_id: classId, date: selectedDate })
+      });
+      if (!validateRes.ok) throw new Error("Gagal mengunci data absensi.");
+
+      alert("Data absensi berhasil disimpan!");
+      setEditMode(false);
+      await fetchData(selectedDate);
+
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Terjadi kesalahan saat menyimpan.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleReset = useCallback(async () => {
-    if (!confirm(`Anda yakin ingin mereset seluruh absensi untuk kelas ${className} pada tanggal ${selectedDate}?`)) return;
+    if (!confirm(`Anda yakin ingin mereset seluruh absensi untuk kelas ${className} pada tanggal ${selectedDate}? Aksi ini akan menghapus semua data absensi dan membuka kembali form.`)) return;
     try {
       const res = await fetch(`/api/attendance/reset?class_id=${classId}&date=${selectedDate}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal mereset absensi");
-      alert("Absensi berhasil direset!");
+      
+      const data = await res.json();
+      alert(data.message || "Absensi berhasil direset!");
       await fetchData(selectedDate);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Terjadi kesalahan saat mereset absensi.");
     }
   }, [classId, selectedDate, className, fetchData]);
   
-  const handleOpenValidationModal = useCallback(() => {
-    if (classTeachers.length === 0) {
-      alert("Tidak dapat validasi. Tidak ada data pengajar yang ditugaskan untuk kelas ini.");
-      return;
-    }
-    setSelectedValidatorId("");
-    setIsValidationModalOpen(true);
-  }, [classTeachers]);
-
-  const handleConfirmValidation = useCallback(async () => {
-    if (!selectedValidatorId) {
-      alert("Anda harus memilih satu pengajar sebagai validator.");
-      return;
-    }
-    try {
-      const res = await fetch(`/api/attendance/validate`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ class_id: classId, date: selectedDate, validator_id: selectedValidatorId }),
-      });
-      if (!res.ok) throw new Error("Gagal memvalidasi");
-      alert("Absensi berhasil divalidasi!");
-      setIsValidationModalOpen(false);
-      await fetchData(selectedDate);
-    } catch (err) {
-      alert("Terjadi kesalahan saat validasi.");
-    }
-  }, [classId, selectedDate, selectedValidatorId, fetchData]);
-
   useEffect(() => {
     if (!isScannerOpen) return;
     const scanner = new Html5QrcodeScanner("qr-reader-container", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-    const onScanSuccess = async (decodedText: string) => {
+    const onScanSuccess = (decodedText: string) => {
       scanner.clear().catch(console.error);
       setIsScannerOpen(false);
       try {
         const qrData = JSON.parse(decodedText);
-        const student = attendance.find((s) => s.student_id === qrData.student_id);
-        if (!student) throw new Error("Siswa tidak ditemukan di kelas ini.");
-        await handleStatusChange(student.student_id, "Hadir");
+        handleStatusChange(qrData.student_id, "Hadir");
       } catch (err) {
         alert(`Error: ${err instanceof Error ? err.message : "QR Code tidak valid"}`);
       }
     };
     scanner.render(onScanSuccess, () => {});
     return () => { scanner.clear().catch(console.error) };
-  }, [isScannerOpen, attendance, handleStatusChange]);
+  }, [isScannerOpen, handleStatusChange]);
 
   const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha"];
   
@@ -165,24 +149,19 @@ export default function AttendancePage() {
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
       <div className="bg-white p-6 rounded-xl shadow-md">
 
-        {/* Header Halaman */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
               Absensi {className ? `Kelas ${className}` : "..."}
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {formatDate(selectedDate)}
-            </p>
+            <p className="text-sm text-gray-500 mt-1">{formatDate(selectedDate)}</p>
           </div>
           <div className="flex items-center gap-2">
             <Link href="/dashboard-attendance" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
-              <ArrowLeft size={16} />
-              <span>Back</span>
+              <ArrowLeft size={16} /><span>Back</span>
             </Link>
             <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
-              <Home size={16} />
-              <span>Home</span>
+              <Home size={16} /><span>Home</span>
             </Link>
           </div>
         </div>
@@ -191,83 +170,56 @@ export default function AttendancePage() {
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="w-full sm:w-auto">
               <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
-              <input 
-                type="date" 
-                id="attendance-date" 
-                value={selectedDate} 
-                onChange={(e) => setSelectedDate(e.target.value)} 
-                max={getTodayString()} 
-                className="p-2 border rounded-md bg-white w-full" 
-                disabled={loading} 
-              />
+              <input type="date" id="attendance-date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} max={getTodayString()} className="p-2 border rounded-md bg-white w-full" disabled={loading} />
             </div>
-            {/* PERUBAHAN: Komponen Toggle Switch Mode */}
-            {!isValidated && (
+            {editMode && (
               <div className="w-full sm:w-auto">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Mode Absensi</label>
                 <div className="flex items-center p-1 bg-gray-200 rounded-lg">
-                  <button onClick={() => setAttendanceMode('qr')} className={`w-1/2 text-center text-sm font-semibold py-1 px-3 rounded-md transition-colors ${attendanceMode === 'qr' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'}`}>
-                    QR Code
-                  </button>
-                  <button onClick={() => setAttendanceMode('manual')} className={`w-1/2 text-center text-sm font-semibold py-1 px-3 rounded-md transition-colors ${attendanceMode === 'manual' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'}`}>
-                    Manual
-                  </button>
+                  <button onClick={() => setAttendanceMode('qr')} className={`w-1/2 text-center text-sm font-semibold py-1 px-3 rounded-md transition-colors ${attendanceMode === 'qr' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'}`}>QR Code</button>
+                  <button onClick={() => setAttendanceMode('manual')} className={`w-1/2 text-center text-sm font-semibold py-1 px-3 rounded-md transition-colors ${attendanceMode === 'manual' ? 'bg-white text-blue-600 shadow' : 'text-gray-600'}`}>Manual</button>
                 </div>
               </div>
             )}
           </div>
-
-          {!isValidated && (
-            <div className={`w-full md:w-auto grid grid-cols-1 sm:grid-cols-${attendanceMode === 'qr' ? '3' : '2'} gap-2`}>
-              {/* PERUBAHAN: Tombol Scan QR hanya muncul di mode QR */}
-              {attendanceMode === 'qr' && (
-                <button onClick={() => setIsScannerOpen(true)} className="flex items-center justify-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-700 font-semibold text-sm shadow-sm">
-                  <QrCode size={16} />
-                  <span>Scan QR</span>
+          
+          <div className="w-full md:w-auto flex flex-col gap-2">
+            {editMode ? (
+              <div className={`grid grid-cols-1 sm:grid-cols-${attendanceMode === 'qr' ? '3' : '2'} gap-2`}>
+                {attendanceMode === 'qr' && (
+                  <button onClick={() => setIsScannerOpen(true)} className="flex items-center justify-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-700 font-semibold text-sm shadow-sm">
+                    <QrCode size={16} /><span>Scan QR</span>
+                  </button>
+                )}
+                <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
+                  <RotateCcw size={16} /><span>Reset</span>
                 </button>
-              )}
-              <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
-                <RotateCcw size={16} />
-                <span>Reset</span>
-              </button>
-              <button onClick={handleOpenValidationModal} className="flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm shadow-sm">
-                <ShieldCheck size={16} />
-                <span>Validasi</span>
-              </button>
-            </div>
-          )}
+                <button onClick={handleSaveAll} className="flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-semibold text-sm shadow-sm disabled:bg-green-400" disabled={isSaving}>
+                  {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                  <span>{isSaving ? "Menyimpan..." : "Simpan & Kunci"}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
+                  <RotateCcw size={16} /><span>Reset</span>
+                </button>
+                <button onClick={() => setEditMode(true)} className="flex items-center justify-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 font-semibold text-sm shadow-sm">
+                  <Edit size={16} /><span>Edit Absensi</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* ... sisa kode (Modal, Notif Validated, dll tidak berubah) ... */}
-        {isValidated && (
+        {!editMode && (
           <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-r-lg flex items-center gap-4">
-            <CheckCircle className="h-8 w-8 text-green-600"/>
-            <div>
-              <p className="font-bold">Absensi Sesi Ini Telah Divalidasi</p>
-              <p className="text-sm">Data dikunci oleh <strong>{validatorName || "N/A"}</strong> dan tidak dapat diubah lagi.</p>
-            </div>
-          </div>
-        )}
-
-        {isValidationModalOpen && (
-             <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
-               <div className="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
-                 <h2 className="text-2xl font-bold mb-2">Konfirmasi Validasi</h2>
-                 <p className="text-gray-600 mb-6">Pilih pengajar yang bertanggung jawab untuk mengunci data absensi hari ini.</p>
-                 <div className="space-y-3 max-h-60 overflow-y-auto border-t border-b py-4">
-                   {classTeachers.map((teacher) => (
-                     <label key={teacher.id} className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 transition-colors">
-                       <input type="radio" name="validator" value={teacher.id} checked={selectedValidatorId === teacher.id} onChange={(e) => setSelectedValidatorId(e.target.value)} className="h-5 w-5 text-blue-600 focus:ring-blue-500" />
-                       <span className="ml-4 font-medium text-gray-800">{teacher.name}</span>
-                     </label>
-                   ))}
-                 </div>
-                 <div className="flex justify-end gap-4 pt-6">
-                   <button type="button" onClick={() => setIsValidationModalOpen(false)} className="px-6 py-2 bg-gray-300 text-gray-800 rounded-lg font-semibold hover:bg-gray-400">Batal</button>
-                   <button onClick={handleConfirmValidation} className="px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700">Konfirmasi</button>
-                 </div>
-               </div>
+             <Check size={24} className="text-green-600"/>
+             <div>
+                <p className="font-bold">Absensi Sesi Ini Telah Disimpan</p>
+                <p className="text-sm">Klik tombol 'Edit Absensi' untuk mengubah absensi.</p>
              </div>
+          </div>
         )}
 
         {isScannerOpen && (
@@ -294,16 +246,15 @@ export default function AttendancePage() {
               <tbody>
                 {attendance.map((a, index) => (
                   <tr key={a.student_id} className={`border-b last:border-b-0 ${a.status === 'Hadir' ? 'bg-green-50' : a.status !== 'Belum Hadir' ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
-                    <td className="p-3 whitespace-nowrap">{(index + 1).toString().padStart(3, '0')}</td>
+                    <td className="p-3 whitespace-nowrap text-center">{(index + 1).toString().padStart(3, '0')}</td>
                     <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{a.name}</td>
                     <td className="p-3">
                       <select 
                         value={a.status} 
                         onChange={(e) => handleStatusChange(a.student_id, e.target.value)} 
                         className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed disabled:text-gray-500 appearance-none" 
-                        disabled={isValidated}
+                        disabled={!editMode}
                       >
-                        {/* PERUBAHAN: Opsi "Hadir" ditampilkan berdasarkan mode absensi */}
                         {statusOptions.map((opt) => {
                           if (attendanceMode === 'qr' && opt === 'Hadir' && a.status !== 'Hadir') {
                             return null;
@@ -312,7 +263,7 @@ export default function AttendancePage() {
                         })}
                       </select>
                     </td>
-                    <td className="p-3 whitespace-nowrap text-gray-600">{a.checked_in_at ? new Date(a.checked_in_at).toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta" }) : "-"}</td>
+                    <td className="p-3 whitespace-nowrap text-gray-600 text-center">{a.checked_in_at ? new Date(a.checked_in_at).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: "Asia/Jakarta" }) : "-"}</td>
                   </tr>
                 ))}
               </tbody>
