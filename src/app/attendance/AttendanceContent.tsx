@@ -7,16 +7,16 @@ import Link from "next/link";
 import { ArrowLeft, Home, QrCode, RotateCcw, Edit, Check, Loader2 } from "lucide-react";
 
 // Tipe Data
-type Attendance = { 
-  student_id: string; 
-  name: string; 
-  status: string; 
-  checked_in_at: string | null; 
+type Attendance = {
+  student_id: string;
+  name: string;
+  status: string;
+  checked_in_at: string | null;
 };
 
 // Fungsi helper
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
-const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta'});
+const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' });
 
 export default function AttendanceContent() {
   const searchParams = useSearchParams();
@@ -65,22 +65,22 @@ export default function AttendanceContent() {
   }, [classId]);
 
   useEffect(() => {
-    if(classId) {
+    if (classId) {
       fetchData(selectedDate);
     }
   }, [fetchData, selectedDate, classId]);
 
   const handleStatusChange = useCallback((student_id: string, new_status: string) => {
-    setAttendance((prev) => 
-      prev.map((s) => 
-        s.student_id === student_id 
-          ? { ...s, status: new_status, checked_in_at: new_status === 'Hadir' && !s.checked_in_at ? new Date().toISOString() : s.checked_in_at } 
+    setAttendance((prev) =>
+      prev.map((s) =>
+        s.student_id === student_id
+          ? { ...s, status: new_status, checked_in_at: new_status === 'Hadir' && !s.checked_in_at ? new Date().toISOString() : s.checked_in_at }
           : s
       )
     );
-    
+
     if (new_status === "Hadir" && audioRef.current) {
-        audioRef.current.play().catch(console.error);
+      audioRef.current.play().catch(console.error);
     }
   }, []);
 
@@ -117,7 +117,7 @@ export default function AttendanceContent() {
     try {
       const res = await fetch(`/api/attendance/reset?class_id=${classId}&date=${selectedDate}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Gagal mereset absensi");
-      
+
       const data = await res.json();
       alert(data.message || "Absensi berhasil direset!");
       await fetchData(selectedDate);
@@ -125,7 +125,7 @@ export default function AttendanceContent() {
       alert(err instanceof Error ? err.message : "Terjadi kesalahan saat mereset absensi.");
     }
   }, [classId, selectedDate, className, fetchData]);
-  
+
   useEffect(() => {
     if (!isScannerOpen) return;
     const scanner = new Html5QrcodeScanner("qr-reader-container", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
@@ -139,12 +139,12 @@ export default function AttendanceContent() {
         alert(`Error: ${err instanceof Error ? err.message : "QR Code tidak valid"}`);
       }
     };
-    scanner.render(onScanSuccess, () => {});
+    scanner.render(onScanSuccess, () => { });
     return () => { scanner.clear().catch(console.error) };
   }, [isScannerOpen, handleStatusChange]);
 
   const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha"];
-  
+
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
       <div className="bg-white p-6 rounded-xl shadow-md">
@@ -165,7 +165,7 @@ export default function AttendanceContent() {
             </Link>
           </div>
         </div>
-        
+
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="w-full sm:w-auto">
@@ -182,7 +182,7 @@ export default function AttendanceContent() {
               </div>
             )}
           </div>
-          
+
           <div className="w-full md:w-auto flex flex-col gap-2">
             {editMode ? (
               <div className={`grid grid-cols-1 sm:grid-cols-${attendanceMode === 'qr' ? '3' : '2'} gap-2`}>
@@ -214,11 +214,13 @@ export default function AttendanceContent() {
 
         {!editMode && (
           <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-r-lg flex items-center gap-4">
-             <Check size={24} className="text-green-600"/>
-             <div>
-                <p className="font-bold">Absensi Sesi Ini Telah Disimpan</p>
-                <p className="text-sm">Klik tombol 'Edit Absensi' untuk mengubah absensi.</p>
-             </div>
+            <Check size={24} className="text-green-600" />
+            <div>
+              <p className="font-bold">Absensi Sesi Ini Telah Disimpan</p>
+              <p className="text-sm">
+                Klik tombol &apos;Edit Absensi&apos; untuk mengubah absensi.
+              </p>
+            </div>
           </div>
         )}
 
@@ -249,10 +251,10 @@ export default function AttendanceContent() {
                     <td className="p-3 whitespace-nowrap text-center">{(index + 1).toString().padStart(3, '0')}</td>
                     <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{a.name}</td>
                     <td className="p-3">
-                      <select 
-                        value={a.status} 
-                        onChange={(e) => handleStatusChange(a.student_id, e.target.value)} 
-                        className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed disabled:text-gray-500 appearance-none" 
+                      <select
+                        value={a.status}
+                        onChange={(e) => handleStatusChange(a.student_id, e.target.value)}
+                        className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed disabled:text-gray-500 appearance-none"
                         disabled={!editMode}
                       >
                         {statusOptions.map((opt) => {
