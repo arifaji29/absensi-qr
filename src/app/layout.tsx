@@ -24,8 +24,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* 🚀 Paksa browser hanya pakai light mode */}
+        <meta name="color-scheme" content="light" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        style={{
+          backgroundColor: "#ffffff", // paksa background putih
+          color: "#000000", // paksa teks hitam
+        }}
       >
         {children}
       </body>

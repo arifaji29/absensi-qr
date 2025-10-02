@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #ffffff;   /* selalu putih */
+  --foreground: #171717;   /* selalu hitam/abu gelap */
 }
 
 @theme inline {
@@ -12,10 +12,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* 🚀 Hapus aturan prefers-color-scheme agar tidak ikut dark mode */
+/* Kalau mau aman, bisa override seperti ini */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ffffff !important;
+    --foreground: #171717 !important;
   }
 }
 
