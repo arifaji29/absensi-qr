@@ -2,42 +2,26 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, HandCoins, LayoutDashboard, Wallet } from "lucide-react";
+import { ArrowLeft, Home, HandCoins, LayoutDashboard } from "lucide-react";
 
 // Tipe data
 type Teacher = { id: string; name: string };
 type ClassWithTeachers = { id: string; name: string; teachers: Teacher[] };
 
-// Fungsi untuk format mata uang
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-  }).format(value);
-};
-
 export default function InfaqDashboardPage() {
   const [classes, setClasses] = useState<ClassWithTeachers[]>([]);
-  const [totalInfaq, setTotalInfaq] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Ambil data kelas dan total infaq secara bersamaan
-      const [classesRes, totalInfaqRes] = await Promise.all([
-        fetch("/api/classes"),
-        fetch("/api/infaq/total")
-      ]);
+      // Hanya ambil data kelas
+      const classesRes = await fetch("/api/classes");
 
-      if (!classesRes.ok || !totalInfaqRes.ok) throw new Error("Gagal memuat data");
+      if (!classesRes.ok) throw new Error("Gagal memuat data kelas");
       
       const classesData = await classesRes.json();
-      const totalInfaqData = await totalInfaqRes.json();
-
       setClasses(Array.isArray(classesData) ? classesData : []);
-      setTotalInfaq(totalInfaqData.totalInfaq || 0);
 
     } catch (err) {
       console.error(err);
@@ -77,30 +61,14 @@ export default function InfaqDashboardPage() {
           </div>
         </div>
         
-        {/* Kartu Informasi Saldo Global & Tombol Aksi */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            {/* Kartu Saldo */}
-            <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-6 rounded-xl shadow-lg text-white">
-                <div className="flex items-center gap-4">
-                    <div className="bg-white/20 p-3 rounded-full">
-                        <Wallet size={32} />
-                    </div>
-                    <div>
-                        <p className="text-lg font-semibold">Jumlah Saldo Global Infaq</p>
-                        <p className="text-3xl font-bold tracking-tight">
-                            {loading ? 'Memuat...' : formatCurrency(totalInfaq)}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            {/* Tombol Aksi */}
+        {/* Tombol Aksi Global Infaq */}
+        <div className="mb-8">
             <div className="bg-gray-50 p-6 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div>
-                    <h3 className="font-bold text-gray-800">Aksi Lanjutan</h3>
-                    <p className="text-sm text-gray-500">Lihat semua laporan atau kelola data infaq.</p>
+                    <h3 className="font-bold text-gray-800 text-lg">Aksi Lanjutan</h3>
+                    <p className="text-sm text-gray-500">Lihat semua laporan atau kelola pembukuan infaq global.</p>
                 </div>
-                <Link href="/monitoring/infaq-global" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-semibold shadow-sm w-full sm:w-auto">
+                <Link href="/infaq/global" className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 font-semibold shadow-sm w-full sm:w-auto">
                     <LayoutDashboard size={20} />
                     <span>Kelola Infaq Global</span>
                 </Link>
@@ -111,7 +79,7 @@ export default function InfaqDashboardPage() {
         {loading ? (
           <p className="text-center text-gray-500 py-8">Memuat data kelas...</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto border rounded-lg">
             <table className="w-full text-sm">
                 <thead className="bg-gray-100 text-left text-gray-600">
                     <tr>

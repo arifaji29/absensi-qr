@@ -6,12 +6,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// Tipe untuk data yang diterima dari client saat menyimpan
+// Tipe untuk data yang diterima dari client
 type InfaqPayload = {
   [studentId: string]: { amount: number; description?: string };
 };
 
-// PERBAIKAN 1: Definisikan tipe data spesifik untuk hasil GET
+// Tipe untuk hasil object yang dikirim ke client
 type InfaqObject = {
   [studentId: string]: { amount: number; description: string | null };
 };
@@ -35,7 +35,6 @@ export async function GET(req: NextRequest) {
         
         if (error) throw error;
 
-        // PERBAIKAN 2: Ganti 'any' dengan tipe 'InfaqObject' yang sudah didefinisikan
         const infaqObject = data.reduce((acc: InfaqObject, record) => {
             acc[record.student_id] = {
                 amount: record.amount,
@@ -47,14 +46,13 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(infaqObject);
 
     } catch (err: unknown) {
-        // PERBAIKAN 3: Lengkapi blok catch
         const error = err as Error;
         console.error("API GET Infaq Error:", error.message);
         return NextResponse.json({ error: "Terjadi kesalahan pada server saat mengambil data infaq." }, { status: 500 });
     }
 }
 
-// POST: Menyimpan (Upsert) data infaq
+// POST: Menyimpan (Upsert) DAN Menghapus data infaq
 export async function POST(req: NextRequest) {
   try {
     const { classId, date, infaqData }: { classId: string, date: string, infaqData: InfaqPayload } = await req.json();
@@ -63,35 +61,59 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Data tidak lengkap." }, { status: 400 });
     }
 
+    // ==========================================================
+    // === PERBAIKAN UTAMA: MEMISAHKAN DATA UNTUK DISIMPAN & DIHAPUS ===
+    // ==========================================================
+
+    // 1. Data untuk disimpan/diperbarui (amount > 0)
     const recordsToUpsert = Object.entries(infaqData)
-      .filter(([, data]) => data.amount > 0)
+      .filter(([, data]) => (data as { amount: number }).amount > 0)
       .map(([studentId, data]) => ({
         student_id: studentId,
         class_id: classId,
         date: date,
-        amount: data.amount,
-        description: data.description,
+        amount: (data as { amount: number }).amount,
+        description: (data as { description?: string }).description,
       }));
 
-    if (recordsToUpsert.length === 0) {
-      return NextResponse.json({ message: "Tidak ada data infaq untuk disimpan." });
+    // 2. Data untuk dihapus (amount <= 0 atau kosong)
+    const studentIdsToDelete = Object.entries(infaqData)
+      .filter(([, data]) => !(data as { amount: number }).amount || (data as { amount: number }).amount <= 0)
+      .map(([studentId]) => studentId);
+
+    // 3. Jalankan kedua operasi (jika ada data untuk diproses)
+    const promises = [];
+
+    if (recordsToUpsert.length > 0) {
+      promises.push(
+        supabase.from("infaq_records").upsert(recordsToUpsert, {
+          onConflict: 'student_id, date'
+        })
+      );
     }
 
-    const { error } = await supabase
-      .from("infaq_records")
-      .upsert(recordsToUpsert, {
-        onConflict: 'student_id, date'
-      });
+    if (studentIdsToDelete.length > 0) {
+      promises.push(
+        supabase.from("infaq_records")
+          .delete()
+          .eq('date', date)
+          .in('student_id', studentIdsToDelete)
+      );
+    }
 
-    if (error) {
-        console.error("Supabase POST Infaq Error:", error);
-        throw new Error("Gagal menyimpan data infaq ke database.");
+    const results = await Promise.all(promises);
+    
+    // Periksa apakah ada error dari salah satu operasi
+    for (const result of results) {
+      if (result.error) {
+        console.error("Supabase operation error:", result.error);
+        throw new Error("Gagal memproses sebagian data infaq.");
+      }
     }
 
     return NextResponse.json({ message: "Data infaq berhasil disimpan!" });
 
   } catch (err: unknown) {
-    // PERBAIKAN 3: Lengkapi blok catch
     const error = err as Error;
     console.error("API POST Infaq Error:", error.message);
     return NextResponse.json({ error: error.message || 'Terjadi kesalahan pada server.' }, { status: 500 });
