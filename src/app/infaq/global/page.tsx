@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Plus, X, Loader2, Edit, Trash2, FileText, Wallet, Home, ArrowLeft } from "lucide-react";
 import jsPDF from "jspdf";
-// Perubahan di sini: Impor RowInput
 import autoTable, { RowInput } from "jspdf-autotable";
 
 type Transaction = { 
@@ -106,22 +105,18 @@ export default function GlobalInfaqPage() {
         }
     };
 
-    // Fungsi untuk handle ekspor PDF
     const handleExportPDF = () => {
         const doc = new jsPDF();
         const monthName = monthNames[selectedMonth];
         const year = selectedYear;
 
-        // Judul Dokumen
         doc.setFontSize(16);
         doc.text("Laporan Pembukuan Infaq Global", 14, 20);
         doc.setFontSize(12);
         doc.text(`Periode: ${monthName} ${year}`, 14, 28);
 
-        // Header Tabel
         const head = [['Tanggal', 'Laporan', 'Catatan', 'Masuk (Rp)', 'Keluar (Rp)', 'Saldo (Rp)']];
         
-        // Body Tabel
         let currentBalance = openingBalance;
         const body = transactions.map(t => {
             const income = t.type === 'masuk' ? t.amount : 0;
@@ -138,42 +133,36 @@ export default function GlobalInfaqPage() {
             ];
         });
 
-        // Baris Saldo Awal
-        // Perubahan di sini: Tambahkan tipe RowInput
         const openingBalanceRow: RowInput = [
             { content: 'Saldo Awal Bulan', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } },
             { content: new Intl.NumberFormat('id-ID').format(openingBalance), styles: { fontStyle: 'bold', halign: 'right' } }
         ];
 
-        // Baris Saldo Akhir
         const finalBalance = openingBalance + transactions.reduce((acc, t) => acc + (t.type === 'masuk' ? t.amount : -t.amount), 0);
-        // Perubahan di sini: Tambahkan tipe RowInput
         const closingBalanceRow: RowInput = [
             { content: 'Saldo Akhir Bulan', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } },
             { content: new Intl.NumberFormat('id-ID').format(finalBalance), styles: { fontStyle: 'bold', halign: 'right' } }
         ];
 
-        // Generate tabel menggunakan autoTable
         autoTable(doc, {
             startY: 35,
             head: head,
             body: [openingBalanceRow, ...body, closingBalanceRow],
             theme: 'grid',
-            headStyles: { fillColor: [38, 166, 154], halign: 'center' }, // Warna Teal
+            headStyles: { fillColor: [38, 166, 154], halign: 'center' },
             columnStyles: {
-                3: { halign: 'right' }, // Kolom Masuk
-                4: { halign: 'right' }, // Kolom Keluar
-                5: { halign: 'right' }, // Kolom Saldo
+                3: { halign: 'right' },
+                4: { halign: 'right' },
+                5: { halign: 'right' },
             },
             didDrawPage: (data) => {
-                // Footer
                 const pageCount = doc.getNumberOfPages();
                 doc.setFontSize(10);
-                doc.text(`Halaman ${doc.internal.getCurrentPageInfo().pageNumber} dari ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
+                // PERUBAHAN DI SINI: Gunakan data.pageNumber
+                doc.text(`Halaman ${data.pageNumber} dari ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
             }
         });
 
-        // Simpan file
         doc.save(`Laporan_Infaq_${monthName}_${year}.pdf`);
     };
 
@@ -182,7 +171,6 @@ export default function GlobalInfaqPage() {
     return (
         <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
             <div className="bg-white p-6 rounded-xl shadow-md max-w-7xl mx-auto">
-                {/* Header */}
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Kelola Infaq Global</h1>
@@ -198,7 +186,6 @@ export default function GlobalInfaqPage() {
                     </div>
                 </div>
 
-                {/* Saldo & Kontrol */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div className="bg-teal-600 text-white p-4 rounded-lg shadow flex items-center gap-4">
                         <Wallet size={32} className="text-teal-200 flex-shrink-0" />
@@ -229,7 +216,6 @@ export default function GlobalInfaqPage() {
                     </div>
                 </div>
 
-                {/* Modal */}
                 {isModalOpen && (
                     <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
                         <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-xl">
@@ -271,7 +257,6 @@ export default function GlobalInfaqPage() {
                     </div>
                 )}
                 
-                {/* Tabel */}
                 {loading ? <p className="text-center py-10">Memuat data pembukuan...</p> : (
                     <div className="overflow-x-auto border rounded-lg">
                         <table className="w-full text-sm">
