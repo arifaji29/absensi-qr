@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Plus, X, Loader2, Edit, Trash2, FileText, Wallet, Home, ArrowLeft } from "lucide-react";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+// Perubahan di sini: Impor RowInput
+import autoTable, { RowInput } from "jspdf-autotable";
 
 type Transaction = { 
   id: string; 
@@ -138,14 +139,16 @@ export default function GlobalInfaqPage() {
         });
 
         // Baris Saldo Awal
-        const openingBalanceRow = [
+        // Perubahan di sini: Tambahkan tipe RowInput
+        const openingBalanceRow: RowInput = [
             { content: 'Saldo Awal Bulan', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } },
             { content: new Intl.NumberFormat('id-ID').format(openingBalance), styles: { fontStyle: 'bold', halign: 'right' } }
         ];
 
         // Baris Saldo Akhir
         const finalBalance = openingBalance + transactions.reduce((acc, t) => acc + (t.type === 'masuk' ? t.amount : -t.amount), 0);
-        const closingBalanceRow = [
+        // Perubahan di sini: Tambahkan tipe RowInput
+        const closingBalanceRow: RowInput = [
             { content: 'Saldo Akhir Bulan', colSpan: 5, styles: { fontStyle: 'bold', halign: 'right' } },
             { content: new Intl.NumberFormat('id-ID').format(finalBalance), styles: { fontStyle: 'bold', halign: 'right' } }
         ];
