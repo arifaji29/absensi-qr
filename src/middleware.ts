@@ -29,6 +29,7 @@ export async function middleware(req: NextRequest) {
     "/teachers",
     "/assessment",
     "/infaq",
+    "/infaq/global",
     "/dashboard-students",
     "/dashboard-monitoring",
     "/dashboard-journal",

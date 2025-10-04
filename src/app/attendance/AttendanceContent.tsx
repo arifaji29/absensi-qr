@@ -69,14 +69,31 @@ export default function AttendanceContent() {
       fetchData(selectedDate);
     }
   }, [fetchData, selectedDate, classId]);
-
+  
+  // ### PERBAIKAN LOGIKA ADA DI FUNGSI INI ###
   const handleStatusChange = useCallback((student_id: string, new_status: string) => {
     setAttendance((prev) =>
-      prev.map((s) =>
-        s.student_id === student_id
-          ? { ...s, status: new_status, checked_in_at: new_status === 'Hadir' && !s.checked_in_at ? new Date().toISOString() : s.checked_in_at }
-          : s
-      )
+      prev.map((student) => {
+        // Hanya modifikasi siswa yang sesuai
+        if (student.student_id === student_id) {
+          let newCheckedInAt = student.checked_in_at;
+
+          if (new_status === 'Hadir') {
+            // Jika status diubah ke "Hadir" dan belum ada waktu, catat waktu baru.
+            // Jika sudah ada (misal dari data sebelumnya), biarkan.
+            if (!student.checked_in_at) {
+              newCheckedInAt = new Date().toISOString();
+            }
+          } else {
+            // Jika status BUKAN "Hadir" (Sakit, Izin, Alpha), HAPUS waktu kehadiran.
+            newCheckedInAt = null;
+          }
+
+          return { ...student, status: new_status, checked_in_at: newCheckedInAt };
+        }
+        // Kembalikan siswa lain tanpa perubahan
+        return student;
+      })
     );
 
     if (new_status === "Hadir" && audioRef.current) {

@@ -8,7 +8,6 @@ import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-// PERUBAHAN: Tipe data "Libur" dihapus
 type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "-" | "Belum Hadir";
 type AttendanceRecord = { date: string; status: AttendanceStatus };
 type MonitoringData = {
@@ -53,15 +52,17 @@ export default function AttendanceMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [className, setClassName] = useState("");
   const [dateHeaders, setDateHeaders] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'daily' | 'stats'>('daily');
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // State untuk login
+  const [viewMode, setViewMode] = useState<'daily' | 'stats'>('stats');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // State baru untuk menyimpan jumlah hari aktif
+  const [activeDaysCount, setActiveDaysCount] = useState(0);
 
   const today = new Date();
   const currentYear = today.getFullYear();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(currentYear);
   
-  // Cek login status
   useEffect(() => {
     const token = localStorage.getItem('authToken'); 
     if (token) {
@@ -85,10 +86,22 @@ export default function AttendanceMonitoringPage() {
       const res = await fetch(`/api/monitoring/attendance?class_id=${classId}&start_date=${startDate}&end_date=${endDate}`);
       if (!res.ok) throw new Error("Gagal mengambil data dari server");
       const data: MonitoringData[] = await res.json();
-      setMonitoringData(Array.isArray(data) ? data : []);
+      const validData = Array.isArray(data) ? data : [];
+      setMonitoringData(validData);
+
+      // Hitung dan set jumlah hari aktif setelah data diterima
+      const allSessionDates = new Set<string>();
+      validData.forEach(student => {
+        student.attendance_records.forEach(record => {
+          allSessionDates.add(record.date);
+        });
+      });
+      setActiveDaysCount(allSessionDates.size);
+
     } catch (error) {
       console.error("Gagal memuat data monitoring:", error);
       setMonitoringData([]);
+      setActiveDaysCount(0); // Reset jika error
     } finally {
       setLoading(false);
     }
@@ -125,61 +138,42 @@ export default function AttendanceMonitoringPage() {
       case "Sakit": return "bg-orange-100 text-orange-800 font-semibold";
       case "Izin": return "bg-yellow-100 text-yellow-800 font-semibold";
       case "Alpha": return "bg-gray-200 text-gray-700 font-semibold";
-      // PERUBAHAN: case "Libur" dihapus
       default: return "text-gray-400";
     }
   };
 
   const statisticsData: AttendanceStats[] = useMemo(() => {
-    if (!monitoringData || monitoringData.length === 0) return [];
-    
-    let daysPassed = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    
-    if (selectedYear < today.getFullYear() || (selectedYear === today.getFullYear() && selectedMonth < today.getMonth())) {
-      daysPassed = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    } else if (selectedYear === today.getFullYear() && selectedMonth === today.getMonth()) {
-      daysPassed = today.getDate();
-    } else {
-      daysPassed = 0;
-    }
-
-    if (daysPassed === 0) {
+    if (!monitoringData || monitoringData.length === 0 || activeDaysCount === 0) {
       return monitoringData.map(student => ({
-        ...student, Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, percentage: 0,
+        student_id: student.student_id,
+        name: student.name,
+        Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0, percentage: 0,
       }));
     }
 
     return monitoringData.map(student => {
-      // PERUBAHAN: "Libur" dihapus dari object counts
-      const counts: { [key in "Hadir" | "Sakit" | "Izin" | "Alpha"]: number } = { Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0 };
-      
-      for (let i = 0; i < daysPassed; i++) {
-        const currentDate = dateHeaders[i];
-        const record = student.attendance_records.find(r => r.date === currentDate);
-        const status = record?.status;
+      const counts: { [key in "Hadir" | "Sakit" | "Izin" | "Alpha"]: number } = { 
+        Hadir: 0, Sakit: 0, Izin: 0, Alpha: 0 
+      };
 
-        // PERUBAHAN: Pengecekan status "Libur" dihapus
-        if (status && ["Hadir", "Sakit", "Izin", "Alpha"].includes(status)) {
-          counts[status as keyof typeof counts]++;
+      student.attendance_records.forEach(record => {
+        if (record.status in counts) {
+          counts[record.status as keyof typeof counts]++;
         }
-      }
+      });
       
-      // PERUBAHAN: Logika holidayCount dihapus, denominator disederhanakan
-      const denominator = daysPassed;
+      const denominator = activeDaysCount;
       const numerator = counts.Hadir;
-      
       const percentage = denominator > 0 ? (numerator / denominator) * 100 : 0;
       
       return {
         student_id: student.student_id,
         name: student.name,
         ...counts,
-        percentage: parseFloat(percentage.toFixed(1))
+        percentage: Math.round(percentage) 
       };
     });
-  }, [monitoringData, dateHeaders, selectedMonth, selectedYear]);
+  }, [monitoringData, activeDaysCount]);
   
   const handleDownloadExcel = () => {
     const header = ["Nama Siswa", ...dateHeaders.map(d => new Date(d + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit', month: 'short' }))];
@@ -193,7 +187,6 @@ export default function AttendanceMonitoringPage() {
     });
     const worksheet = XLSX.utils.json_to_sheet(body);
     XLSX.utils.sheet_add_aoa(worksheet, [header], { origin: "A1" });
-    // PERUBAHAN: Legenda "L = Libur" dihapus
     const legend = [["Keterangan:"], ["H = Hadir"], ["S = Sakit"], ["I = Izin"], ["A = Alpha"]];
     XLSX.utils.sheet_add_aoa(worksheet, legend, { origin: `A${body.length + 3}` });
     const workbook = XLSX.utils.book_new();
@@ -215,53 +208,51 @@ export default function AttendanceMonitoringPage() {
       styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
       columnStyles: { 0: { cellWidth: 25, halign: 'left' } },
-      // PERUBAHAN: didParseCell untuk 'L' dihapus karena tidak relevan
     });
     const finalY = (doc as jsPDFWithLastTable).lastAutoTable.finalY;
     doc.setFontSize(8); doc.setTextColor(100);
-    // PERUBAHAN: Keterangan "L = Libur" dihapus
     doc.text("Keterangan: H = Hadir, S = Sakit, I = Izin, A = Alpha", 14, finalY + 10);
     doc.save(`Absensi_Harian_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
   };
 
   const handleDownloadStatsExcel = () => {
-    const header = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Persentase Kehadiran (%)"];
-    const body = statisticsData.map(stat => ({
-      "Nama Siswa": stat.name,
-      "Hadir": stat.Hadir,
-      "Sakit": stat.Sakit,
-      "Izin": stat.Izin,
-      "Alpha": stat.Alpha,
-      "Persentase Kehadiran (%)": `${stat.percentage}%`
+    // Tambahkan info hari aktif di file Excel
+    const statsWithActiveDays = statisticsData.map(stat => ({
+        "Nama Siswa": stat.name,
+        "Hadir": stat.Hadir,
+        "Sakit": stat.Sakit,
+        "Izin": stat.Izin,
+        "Alpha": stat.Alpha,
+        "Persentase Kehadiran (%)": `${stat.percentage}%`
     }));
-    const worksheet = XLSX.utils.json_to_sheet(body);
+    const worksheet = XLSX.utils.json_to_sheet(statsWithActiveDays);
+    XLSX.utils.sheet_add_aoa(worksheet, [[`Jumlah Hari Aktif: ${activeDaysCount}`]], { origin: `A${statsWithActiveDays.length + 3}` });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Statistik Absensi");
     XLSX.writeFile(workbook, `Statistik_Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.xlsx`);
-  };
+};
 
-  const handleDownloadStatsPDF = () => {
+const handleDownloadStatsPDF = () => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const tableColumn = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Kehadiran (%)"];
     const tableRows = statisticsData.map(stat => [
-      stat.name,
-      stat.Hadir,
-      stat.Sakit,
-      stat.Izin,
-      stat.Alpha,
-      `${stat.percentage}%`
+        stat.name, stat.Hadir, stat.Sakit, stat.Izin, stat.Alpha, `${stat.percentage}%`
     ]);
     doc.text(`Statistik Kehadiran Kelas ${className} - ${monthNames[selectedMonth]} ${selectedYear}`, 14, 15);
+    
+    // Tambahkan info hari aktif di file PDF
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Jumlah Hari Aktif: ${activeDaysCount} hari`, 14, 22);
+
     autoTable(doc, {
-      head: [tableColumn], 
-      body: tableRows, 
-      startY: 25,
-      styles: { fontSize: 10, cellPadding: 2 },
-      headStyles: { fillColor: [41, 128, 185], textColor: 255 },
-      columnStyles: { 0: { halign: 'left' }, 5: { fontStyle: 'bold' } },
+        head: [tableColumn], body: tableRows, startY: 28,
+        styles: { fontSize: 10, cellPadding: 2 },
+        headStyles: { fillColor: [41, 128, 185], textColor: 255 },
+        columnStyles: { 0: { halign: 'left' }, 5: { fontStyle: 'bold' } },
     });
     doc.save(`Statistik_Absensi_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
-  };
+};
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
@@ -311,7 +302,7 @@ export default function AttendanceMonitoringPage() {
             {viewMode === 'daily' ? (
                  <button onClick={() => setViewMode('stats')} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm">
                    <BarChart size={16} />
-                   <span>Statistik</span>
+                   <span>Lihat Statistik</span>
                  </button>
             ) : (
                  <button onClick={() => setViewMode('daily')} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold text-sm">
@@ -346,6 +337,15 @@ export default function AttendanceMonitoringPage() {
 
         {loading ? (<p className="text-center text-gray-500 py-8">Memuat data laporan...</p>) : (
           <>
+            {/* Tampilan Jumlah Hari Aktif */}
+            {viewMode === 'stats' && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-center">
+                    <p className="text-sm font-semibold text-blue-800">
+                        Jumlah Hari Aktif Bulan Ini: <span className="text-lg">{activeDaysCount}</span> hari
+                    </p>
+                </div>
+            )}
+          
             {viewMode === 'daily' ? (
               <div className="overflow-x-auto border rounded-lg">
                 <table className="w-full text-sm">
@@ -427,7 +427,6 @@ export default function AttendanceMonitoringPage() {
             )}
             
             <div className="mt-4 text-left text-xs text-gray-600">
-              {/* PERUBAHAN: Keterangan "L = Libur" dihapus */}
               <p><strong>Keterangan:</strong> H = Hadir, S = Sakit, I = Izin, A = Alpha</p>
             </div>
           </>

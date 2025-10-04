@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Calendar, BookCopy, AlertTriangle } from "lucide-react";
+import { Home, BookCopy, AlertTriangle } from "lucide-react";
 
 // Tipe data untuk jurnal yang akan ditampilkan
 type JournalLog = {
@@ -16,6 +16,12 @@ type JournalLog = {
   teacher_name: string;
 };
 
+// Daftar nama bulan untuk dropdown
+const monthNames = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
 // Fungsi helper
 const formatDateToYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
@@ -25,7 +31,7 @@ const formatDateToYYYYMMDD = (date: Date): string => {
 };
 
 const formatDateDisplay = (dateString: string) =>
-  new Date(dateString).toLocaleDateString("id-ID", {
+  new Date(dateString).toLocaleString("id-ID", {
     weekday: "long",
     year: "numeric",
     month: "long",
@@ -40,12 +46,13 @@ export default function LearningMonitoringContent() {
   const [journals, setJournals] = useState<JournalLog[]>([]);
   const [className, setClassName] = useState("");
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(
-    formatDateToYYYYMMDD(new Date())
-  );
-  const [viewTitle, setViewTitle] = useState("Laporan 7 Hari Terakhir");
 
-  // Fungsi untuk mengambil data jurnal dari API
+  // State baru untuk filter bulan dan tahun
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear());
+
+  // Fungsi untuk mengambil data jurnal dari API (tetap sama)
   const fetchData = useCallback(
     async (class_id: string, startDate: string, endDate: string) => {
       setLoading(true);
@@ -56,6 +63,7 @@ export default function LearningMonitoringContent() {
         if (!res.ok) throw new Error("Gagal memuat data jurnal");
 
         const data = await res.json();
+        // Urutkan jurnal dari tanggal terbaru ke terlama
         data.sort(
           (a: JournalLog, b: JournalLog) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -72,7 +80,7 @@ export default function LearningMonitoringContent() {
     []
   );
 
-  // Ambil nama kelas
+  // Ambil nama kelas (tetap sama)
   useEffect(() => {
     if (!classId) return;
     const fetchClassName = async () => {
@@ -87,27 +95,18 @@ export default function LearningMonitoringContent() {
     fetchClassName();
   }, [classId]);
 
-  // Ambil data 7 hari terakhir saat pertama kali dimuat
+  // useEffect baru untuk memuat data berdasarkan bulan dan tahun yang dipilih
   useEffect(() => {
     if (classId) {
-      const today = new Date();
-      const endDate = formatDateToYYYYMMDD(today);
-      const startDate = formatDateToYYYYMMDD(
-        new Date(today.setDate(today.getDate() - 6))
-      );
-      setViewTitle("Laporan 7 Hari Terakhir");
+      // Tentukan tanggal awal dan akhir dari bulan yang dipilih
+      const startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
+      const endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
+      
       fetchData(classId, startDate, endDate);
     } else {
       setLoading(false);
     }
-  }, [classId, fetchData]);
-
-  // Fungsi untuk memilih tanggal
-  const handleDateChange = (date: string) => {
-    setSelectedDate(date);
-    setViewTitle(`Laporan untuk tanggal: ${formatDateDisplay(date)}`);
-    fetchData(classId, date, date);
-  };
+  }, [classId, selectedMonth, selectedYear, fetchData]);
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
@@ -123,13 +122,6 @@ export default function LearningMonitoringContent() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* <Link
-              href="/dashboard-monitoring"
-              className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
-            >
-              <ArrowLeft size={16} />
-              <span>Kembali</span>
-            </Link> */}
             <Link
               href="/"
               className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
@@ -155,31 +147,31 @@ export default function LearningMonitoringContent() {
           <p className="text-center text-gray-500 py-12">Memuat data jurnal...</p>
         ) : (
           <div>
-            <div className="mb-6">
-              <label
-                htmlFor="journal-date"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Pilih Tanggal Laporan
-              </label>
-              <div className="relative max-w-xs">
-                <input
-                  type="date"
-                  id="journal-date"
-                  value={selectedDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  max={formatDateToYYYYMMDD(new Date())}
-                  className="p-2 border rounded-md bg-white w-full pr-10"
-                />
-                <Calendar
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                  size={20}
-                />
-              </div>
+            {/* Filter Bulan dan Tahun */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pilih Periode Laporan
+                </label>
+                <div className="flex gap-2 max-w-sm">
+                    <select 
+                        value={selectedMonth} 
+                        onChange={(e) => setSelectedMonth(Number(e.target.value))} 
+                        className="w-full p-2 border rounded-md bg-white text-sm"
+                    >
+                        {monthNames.map((name, index) => <option key={index} value={index}>{name}</option>)}
+                    </select>
+                    <select 
+                        value={selectedYear} 
+                        onChange={(e) => setSelectedYear(Number(e.target.value))} 
+                        className="w-full p-2 border rounded-md bg-white text-sm"
+                    >
+                        {Array.from({ length: 5 }, (_, i) => today.getFullYear() - i).map(year => <option key={year} value={year}>{year}</option>)}
+                    </select>
+                </div>
             </div>
 
             <h2 className="text-xl font-semibold text-gray-700 mb-4">
-              {viewTitle}
+              Laporan Bulan {monthNames[selectedMonth]} {selectedYear}
             </h2>
 
             {journals.length > 0 ? (
@@ -233,8 +225,7 @@ export default function LearningMonitoringContent() {
                   Belum Ada Jurnal
                 </h3>
                 <p className="text-gray-500 mt-1">
-                  Tidak ada data jurnal pembelajaran yang diinput pada periode
-                  ini.
+                  Tidak ada data jurnal pembelajaran yang diinput pada periode ini.
                 </p>
               </div>
             )}
