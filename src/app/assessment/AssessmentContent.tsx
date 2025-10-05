@@ -21,7 +21,8 @@ type ScaleType = "numerik" | "kualitatif";
 type AssessmentAspect = { id: string; name: string; scale_type: ScaleType };
 type Scores = { [studentId: string]: { [aspectId: string]: string | number } };
 
-const QUALITATIVE_SCALES = ["Sangat Baik", "Baik", "Cukup", "Kurang"];
+// ### PERUBAHAN DI SINI ###
+const QUALITATIVE_SCALES = ["Sangat Lancar", "Lancar", "Cukup", "Kurang"];
 const getTodayString = () =>
   new Date(new Date().getTime() + 7 * 60 * 60 * 1000)
     .toISOString()
@@ -45,7 +46,7 @@ export default function AssessmentContent() {
   const [selectedDate, setSelectedDate] = useState(getTodayString());
   const [editMode, setEditMode] = useState(true);
 
-  // --- (Semua fungsi handler seperti fetchAssessmentData, handleCreateAspect, dll. biarkan sama persis) ---
+  // --- (Fungsi-fungsi handler tetap sama) ---
   const fetchAssessmentData = useCallback(async (date: string) => {
       if (!classId) return;
       setLoading(true);
@@ -183,7 +184,8 @@ export default function AssessmentContent() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Skala Penilaian</label>
                   <select value={newAspectScale} onChange={(e) => setNewAspectScale(e.target.value as ScaleType)} className="border p-3 w-full rounded-lg bg-white" disabled={isSubmittingAspect}>
-                    <option value="kualitatif">Kualitatif (Sangat Baik - Kurang)</option>
+                    {/* ### PERUBAHAN DI SINI ### */}
+                    <option value="kualitatif">Kualitatif (Sangat Lancar - Kurang)</option>
                     <option value="numerik">Numerik (1 - 100)</option>
                   </select>
                 </div>
@@ -206,15 +208,15 @@ export default function AssessmentContent() {
                 <tr>
                     <th className="p-4 font-semibold sticky left-0 bg-gray-100 z-10 w-48">Nama Siswa</th>
                     {aspects.map(aspect => (
-                    <th key={aspect.id} className="p-4 font-semibold min-w-[150px]">
-                      <div className="flex items-center justify-between gap-2">
-                        <span>{aspect.name}</span>
-                        {editMode && (
-                          <button onClick={() => handleDeleteAspect(aspect.id)} className="text-red-400 hover:text-red-600" title="Hapus Aspek">
-                            <Trash2 size={16}/>
-                          </button>
-                        )}
-                      </div>
+                    <th key={aspect.id} className="p-4 font-semibold min-w-[200px]">
+                        <div className="flex items-center justify-between gap-2">
+                            <span>{aspect.name}</span>
+                            {editMode && (
+                                <button onClick={() => handleDeleteAspect(aspect.id)} className="text-red-400 hover:text-red-600" title="Hapus Aspek">
+                                    <Trash2 size={16}/>
+                                </button>
+                            )}
+                        </div>
                     </th>
                     ))}
                 </tr>
@@ -245,9 +247,6 @@ export default function AssessmentContent() {
         {/* Tombol Aksi Bawah */}
         {aspects.length > 0 && !loading && (
           <div className="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4">
-            {/* PERUBAHAN: Tombol "Tambah Aspek" di bagian bawah ini dihapus */}
-            {/* <div> {editMode && ( <button>...</button> )} </div> */}
-            
             <div className="flex flex-col sm:flex-row justify-end items-center gap-4 w-full sm:w-auto">
               {editMode ? (
                 <>
