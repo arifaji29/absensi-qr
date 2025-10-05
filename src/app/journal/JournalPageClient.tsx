@@ -295,7 +295,7 @@ export default function JournalPageClient() {
             
             {!isEditing && (
                 <div className="p-3 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-r-lg text-sm">
-                    <p>Jurnal untuk tanggal ini sudah tersimpan. Klik tombol 'Edit Jurnal' untuk mengubah.</p>
+                   <p>Jurnal untuk tanggal ini sudah tersimpan. Klik tombol &apos;Edit Jurnal&apos; untuk mengubah.</p>
                 </div>
             )}
 
