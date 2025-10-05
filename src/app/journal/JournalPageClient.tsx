@@ -3,7 +3,16 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Save, Edit, Calendar, AlertTriangle } from "lucide-react";
+import {
+  ArrowLeft,
+  Home,
+  Save,
+  Edit,
+  Calendar,
+  AlertTriangle,
+  RotateCcw, // Ikon untuk tombol Reset
+  Loader2,    // Ikon untuk loading
+} from "lucide-react";
 
 // Tipe data
 type Teacher = {
@@ -49,6 +58,18 @@ export default function JournalPageClient() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Fungsi untuk mengosongkan form
+  const clearForm = (defaultTeacherId = "") => {
+    setJournalEntry({
+      id: undefined,
+      materi: "",
+      deskripsi: "",
+      catatan: "",
+      teacher_id: defaultTeacherId,
+    });
+    setIsEditing(true);
+  };
+
   // Fungsi untuk mengambil data jurnal dan detail kelas
   const fetchDataForDate = useCallback(
     async (date: string) => {
@@ -70,10 +91,11 @@ export default function JournalPageClient() {
         const teachersData = await teachersRes.json();
         setClassName(classData.name || "");
         setTeachers(Array.isArray(teachersData) ? teachersData : []);
+        const defaultTeacher = teachersData[0]?.id || "";
 
         if (journalRes.ok) {
           const journalData = await journalRes.json();
-          if (journalData) {
+          if (journalData && journalData.id) {
             setJournalEntry({
               id: journalData.id,
               materi: journalData.materi || "",
@@ -83,22 +105,10 @@ export default function JournalPageClient() {
             });
             setIsEditing(false);
           } else {
-            setJournalEntry({
-              materi: "",
-              deskripsi: "",
-              catatan: "",
-              teacher_id: teachersData[0]?.id || "",
-            });
-            setIsEditing(true);
+            clearForm(defaultTeacher);
           }
         } else {
-          setJournalEntry({
-            materi: "",
-            deskripsi: "",
-            catatan: "",
-            teacher_id: teachersData[0]?.id || "",
-          });
-          setIsEditing(true);
+          clearForm(defaultTeacher);
         }
       } catch (error) {
         console.error("Gagal memuat data:", error);
@@ -128,8 +138,8 @@ export default function JournalPageClient() {
   };
 
   const handleSave = async () => {
-    if (!journalEntry.teacher_id || !journalEntry.materi) {
-      alert("Pengajar dan Materi Wajib diisi.");
+    if (!journalEntry.teacher_id || !journalEntry.materi || !journalEntry.deskripsi) {
+      alert("Pengajar, Materi, dan Deskripsi Wajib diisi.");
       return;
     }
     setIsSaving(true);
@@ -158,6 +168,29 @@ export default function JournalPageClient() {
       setIsSaving(false);
     }
   };
+
+  // Fungsi baru untuk menangani reset jurnal
+  const handleReset = async () => {
+    if (!journalEntry.id) return;
+    if (!confirm("Anda yakin ingin menghapus jurnal pada tanggal ini? Form akan dikosongkan.")) return;
+
+    setIsSaving(true); // Tampilkan loading saat proses reset
+    try {
+        const res = await fetch(`/api/journal/${journalEntry.id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Gagal menghapus jurnal.");
+        }
+        alert("Jurnal berhasil dihapus.");
+        // Kosongkan form setelah berhasil dihapus
+        const defaultTeacher = teachers[0]?.id || "";
+        clearForm(defaultTeacher);
+    } catch (err) {
+        alert(err instanceof Error ? err.message : "Terjadi kesalahan saat menghapus.");
+    } finally {
+        setIsSaving(false);
+    }
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
@@ -259,6 +292,12 @@ export default function JournalPageClient() {
                 </select>
               </div>
             </div>
+            
+            {!isEditing && (
+                <div className="p-3 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-r-lg text-sm">
+                    <p>Jurnal untuk tanggal ini sudah tersimpan. Klik tombol 'Edit Jurnal' untuk mengubah.</p>
+                </div>
+            )}
 
             {/* Input Fields */}
             <div className="space-y-4">
@@ -319,18 +358,32 @@ export default function JournalPageClient() {
             </div>
 
             {/* Tombol Aksi */}
-            <div className="flex justify-end gap-4 pt-4 border-t">
+            <div className="flex justify-end items-center gap-4 pt-4 border-t">
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={isSaving}
+                  className="flex items-center gap-2 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 font-semibold disabled:bg-gray-400"
+                >
+                  <RotateCcw size={16} />
+                  <span>Reset</span>
+                </button>
+              )}
+
               {isEditing ? (
                 <button
+                  type="button"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-semibold disabled:bg-gray-400"
+                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold disabled:bg-gray-400"
                 >
-                  <Save size={16} />
+                  {isSaving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16} />}
                   <span>{isSaving ? "Menyimpan..." : "Simpan"}</span>
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={() => setIsEditing(true)}
                   className="flex items-center gap-2 bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 font-semibold"
                 >

@@ -3,7 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Home, BookCopy, AlertTriangle } from "lucide-react";
+// Impor ikon RefreshCw
+import { Home, BookCopy, AlertTriangle, RefreshCw } from "lucide-react";
 
 // Tipe data untuk jurnal yang akan ditampilkan
 type JournalLog = {
@@ -47,12 +48,10 @@ export default function LearningMonitoringContent() {
   const [className, setClassName] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // State baru untuk filter bulan dan tahun
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth());
   const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  // Fungsi untuk mengambil data jurnal dari API (tetap sama)
   const fetchData = useCallback(
     async (class_id: string, startDate: string, endDate: string) => {
       setLoading(true);
@@ -63,7 +62,6 @@ export default function LearningMonitoringContent() {
         if (!res.ok) throw new Error("Gagal memuat data jurnal");
 
         const data = await res.json();
-        // Urutkan jurnal dari tanggal terbaru ke terlama
         data.sort(
           (a: JournalLog, b: JournalLog) =>
             new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -79,8 +77,16 @@ export default function LearningMonitoringContent() {
     },
     []
   );
+  
+  // Fungsi baru untuk menangani refresh
+  const handleRefresh = () => {
+    if (classId) {
+      const startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
+      const endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
+      fetchData(classId, startDate, endDate);
+    }
+  };
 
-  // Ambil nama kelas (tetap sama)
   useEffect(() => {
     if (!classId) return;
     const fetchClassName = async () => {
@@ -95,17 +101,9 @@ export default function LearningMonitoringContent() {
     fetchClassName();
   }, [classId]);
 
-  // useEffect baru untuk memuat data berdasarkan bulan dan tahun yang dipilih
   useEffect(() => {
-    if (classId) {
-      // Tentukan tanggal awal dan akhir dari bulan yang dipilih
-      const startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
-      const endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
-      
-      fetchData(classId, startDate, endDate);
-    } else {
-      setLoading(false);
-    }
+    handleRefresh(); // Panggil handleRefresh di sini
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, selectedMonth, selectedYear, fetchData]);
 
   return (
@@ -143,91 +141,95 @@ export default function LearningMonitoringContent() {
               URL tidak valid. Harap akses halaman ini dari menu Monitoring.
             </p>
           </div>
-        ) : loading ? (
-          <p className="text-center text-gray-500 py-12">Memuat data jurnal...</p>
         ) : (
           <div>
             {/* Filter Bulan dan Tahun */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Pilih Periode Laporan
-                </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Pilih Periode Laporan
+              </label>
+              <div className="flex items-center gap-2">
                 <div className="flex gap-2 max-w-sm">
-                    <select 
-                        value={selectedMonth} 
-                        onChange={(e) => setSelectedMonth(Number(e.target.value))} 
-                        className="w-full p-2 border rounded-md bg-white text-sm"
-                    >
-                        {monthNames.map((name, index) => <option key={index} value={index}>{name}</option>)}
-                    </select>
-                    <select 
-                        value={selectedYear} 
-                        onChange={(e) => setSelectedYear(Number(e.target.value))} 
-                        className="w-full p-2 border rounded-md bg-white text-sm"
-                    >
-                        {Array.from({ length: 5 }, (_, i) => today.getFullYear() - i).map(year => <option key={year} value={year}>{year}</option>)}
-                    </select>
+                  <select 
+                    value={selectedMonth} 
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))} 
+                    className="w-full p-2 border rounded-md bg-white text-sm"
+                  >
+                    {monthNames.map((name, index) => <option key={index} value={index}>{name}</option>)}
+                  </select>
+                  <select 
+                    value={selectedYear} 
+                    onChange={(e) => setSelectedYear(Number(e.target.value))} 
+                    className="w-full p-2 border rounded-md bg-white text-sm"
+                  >
+                    {Array.from({ length: 5 }, (_, i) => today.getFullYear() - i).map(year => <option key={year} value={year}>{year}</option>)}
+                  </select>
                 </div>
+                {/* Tombol Refresh Ditambahkan di sini */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  aria-label="Refresh data"
+                >
+                  {loading ? (
+                    <RefreshCw size={20} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={20} />
+                  )}
+                </button>
+              </div>
             </div>
 
-            <h2 className="text-xl font-semibold text-gray-700 mb-4">
-              Laporan Bulan {monthNames[selectedMonth]} {selectedYear}
-            </h2>
-
-            {journals.length > 0 ? (
-              <div className="space-y-6">
-                {journals.map((journal) => (
-                  <div
-                    key={journal.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden"
-                  >
-                    <div className="bg-gray-50 p-4 border-b">
-                      <h3 className="font-bold text-lg text-gray-800">
-                        {formatDateDisplay(journal.date)}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Diisi oleh: {journal.teacher_name}
-                      </p>
-                    </div>
-                    <table className="w-full text-sm">
-                      <tbody>
-                        <tr className="border-b">
-                          <td className="p-3 bg-gray-50 font-semibold text-gray-600 w-1/4 md:w-1/6">
-                            Materi
-                          </td>
-                          <td className="p-3 text-gray-800">{journal.materi}</td>
-                        </tr>
-                        <tr className="border-b">
-                          <td className="p-3 bg-gray-50 font-semibold text-gray-600">
-                            Deskripsi
-                          </td>
-                          <td className="p-3 text-gray-800 whitespace-pre-wrap">
-                            {journal.deskripsi}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td className="p-3 bg-gray-50 font-semibold text-gray-600">
-                            Catatan
-                          </td>
-                          <td className="p-3 text-gray-500 italic">
-                            {journal.catatan || "-"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
+            {loading ? (
+              <p className="text-center text-gray-500 py-12">Memuat data jurnal...</p>
             ) : (
-              <div className="text-center py-12 px-6 bg-gray-50 rounded-lg">
-                <BookCopy className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-lg font-semibold text-gray-700">
-                  Belum Ada Jurnal
-                </h3>
-                <p className="text-gray-500 mt-1">
-                  Tidak ada data jurnal pembelajaran yang diinput pada periode ini.
-                </p>
-              </div>
+              <>
+                <h2 className="text-xl font-semibold text-gray-700 mb-4">
+                  Laporan Bulan {monthNames[selectedMonth]} {selectedYear}
+                </h2>
+                {journals.length > 0 ? (
+                  <div className="space-y-6">
+                    {journals.map((journal) => (
+                      <div
+                        key={journal.id}
+                        className="border border-gray-200 rounded-lg overflow-hidden"
+                      >
+                        <div className="bg-gray-50 p-4 border-b">
+                          <h3 className="font-bold text-lg text-gray-800">
+                            {formatDateDisplay(journal.date)}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            Diisi oleh: {journal.teacher_name}
+                          </p>
+                        </div>
+                        <table className="w-full text-sm">
+                          <tbody>
+                            <tr className="border-b">
+                              <td className="p-3 bg-gray-50 font-semibold text-gray-600 w-1/4 md:w-1/6">Materi</td>
+                              <td className="p-3 text-gray-800">{journal.materi}</td>
+                            </tr>
+                            <tr className="border-b">
+                              <td className="p-3 bg-gray-50 font-semibold text-gray-600">Deskripsi</td>
+                              <td className="p-3 text-gray-800 whitespace-pre-wrap">{journal.deskripsi}</td>
+                            </tr>
+                            <tr>
+                              <td className="p-3 bg-gray-50 font-semibold text-gray-600">Catatan</td>
+                              <td className="p-3 text-gray-500 italic">{journal.catatan || "-"}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 px-6 bg-gray-50 rounded-lg">
+                    <BookCopy className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-lg font-semibold text-gray-700">Belum Ada Jurnal</h3>
+                    <p className="text-gray-500 mt-1">Tidak ada data jurnal pada periode ini.</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

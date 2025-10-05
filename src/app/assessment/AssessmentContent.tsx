@@ -21,7 +21,6 @@ type ScaleType = "numerik" | "kualitatif";
 type AssessmentAspect = { id: string; name: string; scale_type: ScaleType };
 type Scores = { [studentId: string]: { [aspectId: string]: string | number } };
 
-// ### PERUBAHAN DI SINI ###
 const QUALITATIVE_SCALES = ["Sangat Lancar", "Lancar", "Cukup", "Kurang"];
 const getTodayString = () =>
   new Date(new Date().getTime() + 7 * 60 * 60 * 1000)
@@ -57,18 +56,34 @@ export default function AssessmentContent() {
           fetch(`/api/classes/${classId}/details`),
           fetch(`/api/assessment/scores?class_id=${classId}&date=${date}`),
         ]);
-        if (!studentsRes.ok || !aspectsRes.ok || !classDetailsRes.ok || !scoresRes.ok) {
+
+        if (!studentsRes.ok || !aspectsRes.ok || !classDetailsRes.ok) {
           throw new Error("Gagal memuat data awal.");
         }
+        
         const studentsData = await studentsRes.json();
         const aspectsData = await aspectsRes.json();
         const classData = await classDetailsRes.json();
-        const scoresData = await scoresRes.json();
+        
         setStudents(Array.isArray(studentsData) ? studentsData : []);
         setAspects(Array.isArray(aspectsData) ? aspectsData : []);
         setClassName(classData.name || "...");
-        setScores(scoresData || {});
-        setEditMode(true);
+        
+        // Cek apakah ada skor tersimpan
+        if(scoresRes.ok) {
+            const scoresData = await scoresRes.json();
+            if (Object.keys(scoresData).length > 0) {
+                setScores(scoresData);
+                setEditMode(false); // Jika ada skor, masuk ke mode non-edit
+            } else {
+                setScores({});
+                setEditMode(true); // Jika tidak ada skor, masuk ke mode edit
+            }
+        } else {
+            setScores({});
+            setEditMode(true);
+        }
+
       } catch (error) {
         console.error("Error:", error);
         alert("Gagal memuat data penilaian.");
@@ -157,6 +172,7 @@ export default function AssessmentContent() {
                 className="p-2 border rounded-md bg-white w-full sm:w-auto"
               />
             </div>
+            {/* Tombol Tambah Aspek hanya muncul jika ada dalam mode edit */}
             {editMode && (
               <button 
                 onClick={() => setIsModalOpen(true)} 
@@ -184,7 +200,6 @@ export default function AssessmentContent() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Skala Penilaian</label>
                   <select value={newAspectScale} onChange={(e) => setNewAspectScale(e.target.value as ScaleType)} className="border p-3 w-full rounded-lg bg-white" disabled={isSubmittingAspect}>
-                    {/* ### PERUBAHAN DI SINI ### */}
                     <option value="kualitatif">Kualitatif (Sangat Lancar - Kurang)</option>
                     <option value="numerik">Numerik (1 - 100)</option>
                   </select>
@@ -211,11 +226,10 @@ export default function AssessmentContent() {
                     <th key={aspect.id} className="p-4 font-semibold min-w-[200px]">
                         <div className="flex items-center justify-between gap-2">
                             <span>{aspect.name}</span>
-                            {editMode && (
-                                <button onClick={() => handleDeleteAspect(aspect.id)} className="text-red-400 hover:text-red-600" title="Hapus Aspek">
-                                    <Trash2 size={16}/>
-                                </button>
-                            )}
+                            {/* ### PERUBAHAN DI SINI: Kondisi editMode dihapus ### */}
+                            <button onClick={() => handleDeleteAspect(aspect.id)} className="text-red-400 hover:text-red-600" title="Hapus Aspek">
+                                <Trash2 size={16}/>
+                            </button>
                         </div>
                     </th>
                     ))}
