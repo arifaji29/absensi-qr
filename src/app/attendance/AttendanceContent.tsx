@@ -14,6 +14,12 @@ type Attendance = {
   checked_in_at: string | null;
 };
 
+// Tipe Notifikasi
+type Notification = {
+  studentName: string;
+  message: string;
+};
+
 // Fungsi helper
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' });
@@ -30,14 +36,26 @@ export default function AttendanceContent() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [attendanceMode, setAttendanceMode] = useState<'qr' | 'manual'>('qr');
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
   const [editMode, setEditMode] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // ### PERUBAHAN 1: State untuk notifikasi ###
+  const [notification, setNotification] = useState<Notification | null>(null);
 
   useEffect(() => {
     audioRef.current = new Audio("/success-sound.mp3");
     if (audioRef.current) audioRef.current.volume = 0.5;
   }, []);
+
+  // ### PERUBAHAN 2: useEffect untuk menghilangkan notifikasi secara otomatis ###
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 3000); // Notifikasi akan hilang setelah 3 detik
+      return () => clearTimeout(timer); // Cleanup timer jika komponen unmount
+    }
+  }, [notification]);
 
   const fetchData = useCallback(async (date: string) => {
     if (!classId) return;
@@ -69,36 +87,32 @@ export default function AttendanceContent() {
       fetchData(selectedDate);
     }
   }, [fetchData, selectedDate, classId]);
-  
-  // ### PERBAIKAN LOGIKA ADA DI FUNGSI INI ###
+
   const handleStatusChange = useCallback((student_id: string, new_status: string) => {
     setAttendance((prev) =>
       prev.map((student) => {
-        // Hanya modifikasi siswa yang sesuai
         if (student.student_id === student_id) {
-          let newCheckedInAt = student.checked_in_at;
-
-          if (new_status === 'Hadir') {
-            // Jika status diubah ke "Hadir" dan belum ada waktu, catat waktu baru.
-            // Jika sudah ada (misal dari data sebelumnya), biarkan.
-            if (!student.checked_in_at) {
-              newCheckedInAt = new Date().toISOString();
+          // Hanya update waktu jika sebelumnya belum hadir
+          if (student.status === "Belum Hadir" && new_status === "Hadir") {
+            if (audioRef.current) {
+              audioRef.current.play().catch(console.error);
             }
-          } else {
-            // Jika status BUKAN "Hadir" (Sakit, Izin, Alpha), HAPUS waktu kehadiran.
-            newCheckedInAt = null;
+            // ### PERUBAHAN 3: Panggil notifikasi di sini ###
+            setNotification({ studentName: student.name, message: "Berhasil diabsen!" });
+            return {
+              ...student,
+              status: new_status,
+              checked_in_at: new Date().toISOString(),
+            };
           }
-
-          return { ...student, status: new_status, checked_in_at: newCheckedInAt };
+          // Logika untuk perubahan manual (Sakit, Izin, dll)
+          if (new_status !== 'Hadir') {
+            return { ...student, status: new_status, checked_in_at: null };
+          }
         }
-        // Kembalikan siswa lain tanpa perubahan
         return student;
       })
     );
-
-    if (new_status === "Hadir" && audioRef.current) {
-      audioRef.current.play().catch(console.error);
-    }
   }, []);
 
   const handleSaveAll = async () => {
@@ -144,28 +158,57 @@ export default function AttendanceContent() {
   }, [classId, selectedDate, className, fetchData]);
 
   useEffect(() => {
-    if (!isScannerOpen) return;
-    const scanner = new Html5QrcodeScanner("qr-reader-container", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-    const onScanSuccess = (decodedText: string) => {
-      scanner.clear().catch(console.error);
-      setIsScannerOpen(false);
-      try {
-        const qrData = JSON.parse(decodedText);
-        handleStatusChange(qrData.student_id, "Hadir");
-      } catch (err) {
-        alert(`Error: ${err instanceof Error ? err.message : "QR Code tidak valid"}`);
-      }
-    };
-    scanner.render(onScanSuccess, () => { });
-    return () => { scanner.clear().catch(console.error) };
+    const isScanCooldown = { current: false };
+
+    if (isScannerOpen) {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader-container",
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        false
+      );
+
+      const onScanSuccess = (decodedText: string) => {
+        if (isScanCooldown.current) {
+          return;
+        }
+        isScanCooldown.current = true;
+        try {
+          const qrData = JSON.parse(decodedText);
+          handleStatusChange(qrData.student_id, "Hadir");
+        } catch (err) {
+          alert(`Error: ${err instanceof Error ? err.message : "QR Code tidak valid"}`);
+        }
+        setTimeout(() => {
+          isScanCooldown.current = false;
+        }, 2000);
+      };
+
+      scanner.render(onScanSuccess, () => { });
+
+      return () => {
+        scanner.clear().catch(console.error);
+      };
+    }
   }, [isScannerOpen, handleStatusChange]);
 
   const statusOptions = ["Belum Hadir", "Hadir", "Sakit", "Izin", "Alpha"];
 
   return (
     <div className="bg-gray-50 min-h-screen p-4 sm:p-6">
-      <div className="bg-white p-6 rounded-xl shadow-md">
 
+      {/* ### PERUBAHAN 4: Render komponen notifikasi ### */}
+      {notification && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[999] bg-green-500 text-white p-4 rounded-lg shadow-lg flex items-center gap-3 animate-fade-in-down">
+          <Check size={24} />
+          <div>
+            <p className="font-bold">{notification.studentName}</p>
+            <p className="text-sm">{notification.message}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white p-6 rounded-xl shadow-md">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
@@ -183,6 +226,7 @@ export default function AttendanceContent() {
           </div>
         </div>
 
+        {/* Kontrol */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="w-full sm:w-auto">
@@ -199,7 +243,6 @@ export default function AttendanceContent() {
               </div>
             )}
           </div>
-
           <div className="w-full md:w-auto flex flex-col gap-2">
             {editMode ? (
               <div className={`grid grid-cols-1 sm:grid-cols-${attendanceMode === 'qr' ? '3' : '2'} gap-2`}>
@@ -229,18 +272,18 @@ export default function AttendanceContent() {
           </div>
         </div>
 
+        {/* Notifikasi */}
         {!editMode && (
           <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-800 rounded-r-lg flex items-center gap-4">
             <Check size={24} className="text-green-600" />
             <div>
               <p className="font-bold">Absensi Sesi Ini Telah Disimpan</p>
-              <p className="text-sm">
-                Klik tombol &apos;Edit Absensi&apos; untuk mengubah absensi.
-              </p>
+              <p className="text-sm">Klik tombol &apos;Edit Absensi&apos; untuk mengubah absensi.</p>
             </div>
           </div>
         )}
 
+        {/* Modal Scanner */}
         {isScannerOpen && (
           <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 w-full max-w-sm">
@@ -251,6 +294,7 @@ export default function AttendanceContent() {
           </div>
         )}
 
+        {/* Tabel */}
         {loading ? (<p className="text-center text-gray-500 py-8">Memuat data absensi...</p>) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
