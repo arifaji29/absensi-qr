@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Fragment, useRef } from "react";
-// Menggunakan tag <a> sebagai pengganti Link
+// Menggunakan kembali tag <a> karena 'next/link' tidak dapat di-resolve di lingkungan ini
 import { 
   ArrowLeft, 
   Home, 
@@ -11,6 +11,7 @@ import {
   Loader2, 
   X 
 } from "lucide-react";
+import { Html5QrcodeScanner } from "html5-qrcode"; // Impor tipe spesifik
 
 // Tipe data
 type Teacher = { id: string; name: string };
@@ -59,7 +60,7 @@ function ParallelScannerModal({
     try {
       const qrData = JSON.parse(decodedText);
       studentIdToFind = (qrData && qrData.student_id) ? qrData.student_id : decodedText;
-    } catch (e) {
+    } catch (_e) { // Perbaikan: Mengganti 'e' menjadi '_e' karena tidak digunakan
       studentIdToFind = decodedText;
     }
 
@@ -92,7 +93,8 @@ function ParallelScannerModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    let scanner: any = null;
+    // Perbaikan: Memberikan tipe spesifik, bukan 'any'
+    let scanner: Html5QrcodeScanner | null = null; 
     const isScanCooldown = { current: false };
 
     import('html5-qrcode').then(({ Html5QrcodeScanner }) => {
@@ -110,7 +112,8 @@ function ParallelScannerModal({
     }).catch(err => console.error("Gagal memuat html5-qrcode.", err));
 
     return () => {
-      if (scanner?.getState() !== 1) {
+        // Memastikan scanner ada sebelum memanggil method clear
+      if (scanner && scanner.getState() !== 1) { 
         scanner.clear().catch(console.error);
       }
     };
@@ -246,7 +249,7 @@ export default function AttendanceDashboard() {
       const res = await fetch("/api/classes");
       if (!res.ok) throw new Error("Gagal memuat data kelas");
       setClasses(await res.json());
-    } catch (err) {
+    } catch { // Perbaikan: Menghapus 'err' yang tidak digunakan
       alert("Terjadi kesalahan saat memuat data.");
     } finally {
       setLoading(false);
@@ -275,6 +278,7 @@ export default function AttendanceDashboard() {
               <p className="text-sm text-gray-500 mt-1">Pilih kelas untuk memulai sesi absensi siswa.</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Perbaikan: Mengembalikan ke tag <a> */}
               <a href="/" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
                 <ArrowLeft size={16} /><span>Back</span>
               </a>

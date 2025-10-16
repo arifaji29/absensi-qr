@@ -1,13 +1,36 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-// Menggunakan <a> sebagai pengganti <Link>
+// Perbaikan: Menggunakan <a> karena 'next/link' tidak dapat di-resolve
 import { ArrowLeft, Home, RefreshCw, FileText, BarChart, CalendarDays } from "lucide-react";
 
-// Tipe data global untuk library dari CDN
-declare const jspdf: any;
+// Tipe data untuk instance jsPDF dengan plugin autotable
+interface jsPDFDocument {
+  text(text: string, x: number, y: number): jsPDFDocument;
+  setFontSize(size: number): jsPDFDocument;
+  setTextColor(color: number | string): jsPDFDocument;
+  save(filename: string): jsPDFDocument;
+  autoTable(options: object): jsPDFDocument;
+  lastAutoTable: {
+    finalY: number;
+  };
+}
 
-// Tipe data
+// Tipe data untuk konstruktor jsPDF
+interface jsPDFConstructor {
+  new(options?: object): jsPDFDocument;
+}
+
+// Memberi tahu TypeScript bahwa jspdf ada di object window
+declare global {
+  interface Window {
+    jspdf: {
+      jsPDF: jsPDFConstructor;
+    };
+  }
+}
+
+// Tipe data aplikasi
 type AttendanceStatus = "Hadir" | "Sakit" | "Izin" | "Alpha" | "-" | "Belum Hadir";
 type AttendanceRecord = { date: string; status: AttendanceStatus };
 type MonitoringData = {
@@ -24,13 +47,6 @@ type AttendanceStats = {
   Alpha: number;
   percentage: number;
 };
-
-// Interface untuk jsPDF autotable
-interface jsPDFWithLastTable extends jsPDF {
-  lastAutoTable: {
-    finalY: number;
-  };
-}
 
 const monthNames = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -83,7 +99,6 @@ export default function AttendanceMonitoringPage() {
       });
     };
 
-    // Hapus pemuatan script XLSX
     loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js", "jspdf-script")
     .then(() => {
       return loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js", "jspdf-autotable-script");
@@ -182,39 +197,39 @@ export default function AttendanceMonitoringPage() {
   }, [monitoringData, activeDaysCount]);
   
   const handleDownloadPDF = () => {
-    const doc = new (window as any).jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    if (!window.jspdf) return;
+    const doc = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
     const tableColumn = ["Nama", ...dateHeaders.map(d => new Date(d + 'T00:00:00').toLocaleDateString("id-ID", { day: '2-digit' }))];
-    const tableRows = monitoringData.map(student => [student.name, ...dateHeaders.map(date => {
+    const tableRows: string[][] = monitoringData.map(student => [student.name, ...dateHeaders.map(date => {
       const record = student.attendance_records.find(r => r.date === date);
       if (!record || !record.status || record.status === 'Belum Hadir') return "-";
       return record.status.charAt(0);
     })]);
     doc.text(`Laporan Kehadiran Harian Kelas ${className} - ${monthNames[selectedMonth]} ${selectedYear}`, 14, 15);
     
-    // PERBAIKAN: Gunakan doc.autoTable sebagai method
-    (doc as any).autoTable({
+    doc.autoTable({
       head: [tableColumn], body: tableRows, startY: 25,
       styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
       headStyles: { fillColor: [41, 128, 185], textColor: 255, halign: 'center' },
       columnStyles: { 0: { cellWidth: 25, halign: 'left' } },
     });
     
-    const finalY = (doc as unknown as jsPDFWithLastTable).lastAutoTable.finalY;
+    const finalY = doc.lastAutoTable.finalY;
     doc.setFontSize(8); doc.setTextColor(100);
     doc.text("Keterangan: H = Hadir, S = Sakit, I = Izin, A = Alpha", 14, finalY + 10);
     doc.save(`Absensi_Harian_${className}_${monthNames[selectedMonth]}_${selectedYear}.pdf`);
   };
 
   const handleDownloadStatsPDF = () => {
-    const doc = new (window as any).jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    if (!window.jspdf) return;
+    const doc = new window.jspdf.jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const tableColumn = ["Nama Siswa", "Hadir", "Sakit", "Izin", "Alpha", "Kehadiran (%)"];
-    const tableRows = statisticsData.map(stat => [ stat.name, stat.Hadir, stat.Sakit, stat.Izin, stat.Alpha, `${stat.percentage}%` ]);
+    const tableRows: (string | number)[][] = statisticsData.map(stat => [ stat.name, stat.Hadir, stat.Sakit, stat.Izin, stat.Alpha, `${stat.percentage}%` ]);
     doc.text(`Statistik Kehadiran Kelas ${className} - ${monthNames[selectedMonth]} ${selectedYear}`, 14, 15);
     doc.setFontSize(10); doc.setTextColor(100);
     doc.text(`Jumlah Hari Aktif: ${activeDaysCount} hari`, 14, 22);
 
-    // PERBAIKAN: Gunakan doc.autoTable sebagai method
-    (doc as any).autoTable({
+    doc.autoTable({
         head: [tableColumn], body: tableRows, startY: 28,
         styles: { fontSize: 10, cellPadding: 2 },
         headStyles: { fillColor: [41, 128, 185], textColor: 255 },
@@ -330,7 +345,7 @@ export default function AttendanceMonitoringPage() {
                        </tr>
                      )}
                    </tbody>
-                </table>
+                 </table>
               </div>
             ) : (
               <div className="overflow-x-auto border rounded-lg">

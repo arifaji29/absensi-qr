@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
-// Perbaikan: Menghapus useSearchParams yang menyebabkan error
-// import { useSearchParams } from "next/navigation";
+// Mengembalikan ke <a> karena 'next/link' tidak bisa di-resolve
 import { ArrowLeft, Home, RotateCcw, Check, Loader2, X } from "lucide-react";
 
 // Tipe Data
@@ -11,6 +10,15 @@ type Attendance = {
   name: string;
   status: string;
   time: string | null;
+};
+
+// Tipe untuk data siswa dari API untuk menghindari 'any'
+type StudentFromAPI = {
+    student_id: string;
+    name: string;
+    status: string;
+    time?: string | null;
+    checked_in_at?: string | null;
 };
 
 // Tipe Notifikasi
@@ -24,15 +32,13 @@ const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000)
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' });
 
 export default function AttendanceContent() {
-  // Perbaikan: Mengambil class_id dari URL menggunakan state dan useEffect
   const [classId, setClassId] = useState("");
   
   useEffect(() => {
-    // Kode ini hanya berjalan di sisi client, aman untuk mengakses window
     const params = new URLSearchParams(window.location.search);
     const idFromUrl = params.get('class_id') || '';
     setClassId(idFromUrl);
-  }, []); // Array kosong berarti hanya berjalan sekali saat komponen dimuat
+  }, []);
 
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +72,7 @@ export default function AttendanceContent() {
       const studentData = await studentRes.json();
       const classData = await classRes.json();
 
-      const formattedStudentData = studentData.map((student: any) => ({
+      const formattedStudentData = studentData.map((student: StudentFromAPI) => ({
         ...student,
         time: student.time || student.checked_in_at || null,
       }));
@@ -173,6 +179,7 @@ export default function AttendanceContent() {
               <p className="text-sm text-gray-500 mt-1">{formatDate(selectedDate)}</p>
             </div>
             <div className="flex items-center gap-2">
+              {/* Perbaikan: Menggunakan tag <a> kembali */}
               <a href="/dashboard-attendance" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
                 <ArrowLeft size={16} /><span>Back</span>
               </a>
