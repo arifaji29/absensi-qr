@@ -1,56 +1,79 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// ⬇️ Tambahkan baris ini agar Next.js memperlakukan route sebagai dinamis
+export const dynamic = 'force-dynamic';
 
-// Tipe data diperbarui: nis dihapus
-type MonitoringRpcResult = {
-  student_id: string;
-  name: string;
-  attendance_records: { date: string; status: string }[] | null;
-};
+export async function GET(request: NextRequest) {
+  // ⬇️ Ambil cookie store secara async (opsional tapi lebih aman)
+  const cookieStore = await cookies();
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
-export async function GET(req: Request) {
+  const { searchParams } = new URL(request.url);
+  const classId = searchParams.get('class_id');
+  const startDate = searchParams.get('start_date');
+  const endDate = searchParams.get('end_date');
+
+  if (!classId || !startDate || !endDate) {
+    return NextResponse.json(
+      { message: 'Parameter class_id, start_date, dan end_date diperlukan.' },
+      { status: 400 }
+    );
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const class_id = searchParams.get("class_id");
-    const start_date = searchParams.get("start_date");
-    const end_date = searchParams.get("end_date");
+    const { data: students, error: studentsError } = await supabase
+      .from('students')
+      .select(`
+        student_id: id,
+        name,
+        attendance_records ( date, status )
+      `)
+      .eq('class_id', classId)
+      .eq('active', true)
+      .gte('attendance_records.date', startDate)
+      .lte('attendance_records.date', endDate)
+      .order('name', { ascending: true });
 
-    if (!class_id || !start_date || !end_date) {
-      return NextResponse.json(
-        { error: "Parameter class_id, start_date, dan end_date diperlukan" },
-        { status: 400 }
-      );
+    if (studentsError) {
+      console.error("Supabase students fetch error:", studentsError);
+      throw new Error("Gagal mengambil data monitoring siswa.");
     }
 
-    const { data, error } = await supabase.rpc('get_class_attendance_monitoring', {
-      p_class_id: class_id,
-      p_start_date: start_date,
-      p_end_date: end_date,
+    const { data: distinctDates, error: distinctDatesError } = await supabase.rpc(
+      'get_distinct_dates_for_class',
+      {
+        p_class_id: classId,
+        p_start_date: startDate,
+        p_end_date: endDate,
+      }
+    );
+
+    if (distinctDatesError) {
+      console.error("RPC distinct dates error:", distinctDatesError);
+    }
+
+    let activeDaysCount = 0;
+    if (distinctDates) {
+      activeDaysCount = distinctDates.length;
+    } else {
+      const allDates = new Set<string>();
+      students.forEach(student => {
+        (student.attendance_records as any[]).forEach(record => {
+          allDates.add(record.date);
+        });
+      });
+      activeDaysCount = allDates.size;
+    }
+
+    return NextResponse.json({
+      monitoringData: students,
+      activeDaysCount,
     });
-
-    if (error) {
-      console.error("Supabase RPC error:", error);
-      throw error;
-    }
-
-    // Terapkan tipe yang sudah diperbarui
-    const formattedData = data.map((item: MonitoringRpcResult) => ({
-      student_id: item.student_id,
-      name: item.name,
-      attendance_records: item.attendance_records || [],
-    }));
-
-    return NextResponse.json(formattedData);
-
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
-    console.error("API Error:", message);
-    return NextResponse.json({ message }, { status: 500 });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Terjadi kesalahan pada server";
+    return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
-
