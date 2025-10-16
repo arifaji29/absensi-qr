@@ -7,16 +7,23 @@ import { NextResponse } from "next/server";
 // Opsional: Pastikan route ini selalu dinamis (supaya Supabase bekerja dengan benar di Edge Runtime)
 export const dynamic = "force-dynamic";
 
+// ✅ Definisikan tipe data attendance
+type AttendanceItem = {
+  student_id: string;
+  class_id: string;
+};
+
 export async function POST(request: Request) {
   try {
-    // ✅ Perbaikan utama: cookies() TIDAK perlu di-await
+    // ✅ cookies() tidak perlu di-await
     const cookieStore = cookies();
 
     // ✅ Supabase client diinisialisasi dengan cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // 1. Ambil data dari body request
-    const { date, attendanceData } = await request.json();
+    const { date, attendanceData }: { date: string; attendanceData: AttendanceItem[] } =
+      await request.json();
 
     // 2. Validasi input
     if (!date || !Array.isArray(attendanceData) || attendanceData.length === 0) {
@@ -27,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Siapkan data untuk diinsert
-    const recordsToInsert = attendanceData.map((item: any) => ({
+    const recordsToInsert = attendanceData.map((item) => ({
       student_id: item.student_id,
       class_id: item.class_id,
       date,
