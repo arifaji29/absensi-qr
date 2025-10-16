@@ -1,8 +1,10 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
-import { NextRequest, NextResponse } from 'next/server';
+// app/api/monitoring/attendance/route.ts
 
-export const dynamic = 'force-dynamic';
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 // 🔹 Definisikan tipe data agar tidak perlu pakai `any`
 interface AttendanceRecord {
@@ -17,42 +19,43 @@ interface Student {
 }
 
 export async function GET(request: NextRequest) {
-  const cookieStore = await cookies();
+  // ✅ Jangan gunakan await di sini
+  const cookieStore = cookies();
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
   const { searchParams } = new URL(request.url);
-  const classId = searchParams.get('class_id');
-  const startDate = searchParams.get('start_date');
-  const endDate = searchParams.get('end_date');
+  const classId = searchParams.get("class_id");
+  const startDate = searchParams.get("start_date");
+  const endDate = searchParams.get("end_date");
 
   if (!classId || !startDate || !endDate) {
     return NextResponse.json(
-      { message: 'Parameter class_id, start_date, dan end_date diperlukan.' },
+      { message: "Parameter class_id, start_date, dan end_date diperlukan." },
       { status: 400 }
     );
   }
 
   try {
     const { data: students, error: studentsError } = await supabase
-      .from('students')
+      .from("students")
       .select(`
         student_id: id,
         name,
         attendance_records ( date, status )
       `)
-      .eq('class_id', classId)
-      .eq('active', true)
-      .gte('attendance_records.date', startDate)
-      .lte('attendance_records.date', endDate)
-      .order('name', { ascending: true });
+      .eq("class_id", classId)
+      .eq("active", true)
+      .gte("attendance_records.date", startDate)
+      .lte("attendance_records.date", endDate)
+      .order("name", { ascending: true });
 
     if (studentsError) {
-      console.error('Supabase students fetch error:', studentsError);
-      throw new Error('Gagal mengambil data monitoring siswa.');
+      console.error("Supabase students fetch error:", studentsError);
+      throw new Error("Gagal mengambil data monitoring siswa.");
     }
 
     const { data: distinctDates, error: distinctDatesError } = await supabase.rpc(
-      'get_distinct_dates_for_class',
+      "get_distinct_dates_for_class",
       {
         p_class_id: classId,
         p_start_date: startDate,
@@ -61,9 +64,10 @@ export async function GET(request: NextRequest) {
     );
 
     if (distinctDatesError) {
-      console.error('RPC distinct dates error:', distinctDatesError);
+      console.error("RPC distinct dates error:", distinctDatesError);
     }
 
+    // Hitung jumlah hari aktif
     let activeDaysCount = 0;
 
     if (distinctDates && Array.isArray(distinctDates)) {
@@ -86,7 +90,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const errorMessage =
-      error instanceof Error ? error.message : 'Terjadi kesalahan pada server';
+      error instanceof Error ? error.message : "Terjadi kesalahan pada server";
     return NextResponse.json({ message: errorMessage }, { status: 500 });
   }
 }
