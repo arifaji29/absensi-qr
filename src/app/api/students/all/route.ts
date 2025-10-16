@@ -1,3 +1,5 @@
+// app/api/students/all/route.ts
+
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
@@ -7,8 +9,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    // ✅ Perbaikan utama: gunakan await cookies()
-    const cookieStore = await cookies();
+    // ✅ Jangan gunakan await di sini
+    const cookieStore = cookies();
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // Ambil parameter tanggal dari URL
@@ -33,7 +35,9 @@ export async function GET(request: NextRequest) {
       throw new Error("Gagal memeriksa data absensi.");
     }
 
-    const attendedIds = attendedStudentIds.map((record) => record.student_id);
+    const attendedIds = (attendedStudentIds ?? []).map(
+      (record: { student_id: string }) => record.student_id
+    );
 
     // Ambil semua siswa aktif, kecuali yang sudah diabsen
     let query = supabase
@@ -52,7 +56,7 @@ export async function GET(request: NextRequest) {
       throw new Error("Gagal mengambil data siswa.");
     }
 
-    // Berhasil: kirim data siswa dalam format JSON
+    // ✅ Berhasil: kirim data siswa dalam format JSON
     return NextResponse.json(students);
   } catch (error) {
     console.error("API Error:", error);
