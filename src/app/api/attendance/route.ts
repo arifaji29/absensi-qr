@@ -22,27 +22,18 @@ export async function GET(req: Request) {
     const date = searchParams.get("date");
 
     if (!class_id || !date) {
-      return NextResponse.json(
-        { error: "class_id dan date wajib diisi" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "class_id dan date wajib diisi" }, { status: 400 });
     }
 
-    // 👇 Tambahkan tipe hasil RPC di sini
-    const { data, error } = await supabase.rpc<RpcResult[]>(
-      "get_class_attendance",
-      {
-        p_class_id: class_id,
-        p_date: date,
-      }
-    );
+    const { data, error } = await supabase.rpc('get_class_attendance', {
+      p_class_id: class_id,
+      p_date: date,
+    });
 
     if (error) throw error;
-    if (!data) {
-      return NextResponse.json([], { status: 200 });
-    }
 
-    const formattedData = data.map((item) => ({
+    // Mapping data tanpa menyertakan NIS
+    const formattedData = data.map((item: RpcResult) => ({
       student_id: item.student_id,
       name: item.name,
       status: item.status,
@@ -51,9 +42,9 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json(formattedData);
+
   } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Terjadi kesalahan";
+    const message = error instanceof Error ? error.message : "Terjadi kesalahan";
     return NextResponse.json({ message }, { status: 500 });
   }
 }

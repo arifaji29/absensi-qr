@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Fragment, useRef } from "react";
-// Menggunakan kembali tag <a> karena 'next/link' tidak dapat di-resolve di lingkungan ini
+import Link from "next/link"; 
 import { 
   ArrowLeft, 
   Home, 
@@ -278,13 +278,13 @@ export default function AttendanceDashboard() {
               <p className="text-sm text-gray-500 mt-1">Pilih kelas untuk memulai sesi absensi siswa.</p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Perbaikan: Mengembalikan ke tag <a> */}
-              <a href="/" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+          
+              <Link href="/" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
                 <ArrowLeft size={16} /><span>Back</span>
-              </a>
-              <a href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
+              </Link>
+              <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
                 <Home size={16} /><span>Home</span>
-              </a>
+              </Link>
             </div>
           </div>
           

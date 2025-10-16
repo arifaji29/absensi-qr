@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
-// Mengembalikan ke <a> karena 'next/link' tidak bisa di-resolve
+import Link from "next/link"; 
 import { ArrowLeft, Home, RotateCcw, Check, Loader2, X } from "lucide-react";
 
 // Tipe Data
@@ -180,12 +180,12 @@ export default function AttendanceContent() {
             </div>
             <div className="flex items-center gap-2">
               {/* Perbaikan: Menggunakan tag <a> kembali */}
-              <a href="/dashboard-attendance" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+              <Link href="/dashboard-attendance" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
                 <ArrowLeft size={16} /><span>Back</span>
-              </a>
-              <a href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
+              </Link>
+              <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
                 <Home size={16} /><span>Home</span>
-              </a>
+              </Link>
             </div>
           </div>
 

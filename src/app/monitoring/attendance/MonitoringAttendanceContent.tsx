@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-// Perbaikan: Menggunakan <a> karena 'next/link' tidak dapat di-resolve
+import Link from "next/link"; 
 import { ArrowLeft, Home, RefreshCw, FileText, BarChart, CalendarDays } from "lucide-react";
 
 // Tipe data untuk instance jsPDF dengan plugin autotable
@@ -251,14 +251,14 @@ export default function AttendanceMonitoringPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-              <a href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
+              <Link href="/dashboard-monitoring" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
                 <ArrowLeft size={16} />
                 <span>Back</span>
-              </a>
-            <a href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
+              </Link>
+            <Link href="/" className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm">
               <Home size={16} />
               <span>Home</span>
-            </a>
+            </Link>
           </div>
         </div>
         
