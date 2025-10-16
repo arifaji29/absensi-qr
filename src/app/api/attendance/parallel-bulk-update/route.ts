@@ -4,13 +4,15 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-// Opsional: pastikan route ini selalu dinamis
+// Opsional: Pastikan route ini selalu dinamis (supaya Supabase bekerja dengan benar di Edge Runtime)
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    // ✅ Perbaikan utama: cookies() harus di-await
-    const cookieStore = await cookies();
+    // ✅ Perbaikan utama: cookies() TIDAK perlu di-await
+    const cookieStore = cookies();
+
+    // ✅ Supabase client diinisialisasi dengan cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // 1. Ambil data dari body request
@@ -25,12 +27,12 @@ export async function POST(request: Request) {
     }
 
     // 3. Siapkan data untuk diinsert
-    const recordsToInsert = attendanceData.map((item) => ({
+    const recordsToInsert = attendanceData.map((item: any) => ({
       student_id: item.student_id,
       class_id: item.class_id,
       date,
       status: "Hadir",
-      time: new Date().toISOString(), // <--- Diubah menjadi 'time'
+      time: new Date().toISOString(), // kolom 'time'
     }));
 
     // 4. Lakukan upsert (insert or update)
