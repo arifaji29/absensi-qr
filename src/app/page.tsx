@@ -137,10 +137,24 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, [supabase, router]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
+ const handleLogout = async () => {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    console.warn("Logout error:", error.message);
+
+    // Tangani error lokal tanpa kirim ke Supabase API (agar tidak muncul di log)
+    if (error.message.includes("Session not found")) {
+      alert("Sesi sudah berakhir atau sudah tidak aktif. Silakan login kembali.");
+    } else {
+      alert("Terjadi kesalahan saat logout: " + error.message);
+    }
+  }
+
+  // Tetap arahkan ke halaman login agar user keluar sepenuhnya
+  router.push("/login");
+};
+
 
   const openModal = (menuTarget: string) => {
     setSelectedMenu(menuTarget);
