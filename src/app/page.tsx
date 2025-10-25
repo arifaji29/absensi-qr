@@ -143,7 +143,6 @@ export default function HomePage() {
   if (error) {
     console.warn("Logout error:", error.message);
 
-    // Tangani error lokal tanpa kirim ke Supabase API (agar tidak muncul di log)
     if (error.message.includes("Session not found")) {
       alert("Sesi sudah berakhir atau sudah tidak aktif. Silakan login kembali.");
     } else {
