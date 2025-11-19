@@ -9,9 +9,10 @@ import {
   Save,
   Edit,
   Calendar,
-  AlertTriangle,
-  RotateCcw, // Ikon untuk tombol Reset
-  Loader2,    // Ikon untuk loading
+  RotateCcw,
+  Loader2,
+  BookOpen, 
+  Filter
 } from "lucide-react";
 
 // Tipe data
@@ -26,6 +27,12 @@ type JournalEntry = {
   deskripsi: string;
   catatan: string;
   teacher_id: string;
+};
+
+// Tipe untuk daftar kelas (Dropdown)
+type ClassItem = {
+    id: string;
+    name: string;
 };
 
 // Fungsi helper untuk format tanggal
@@ -43,7 +50,10 @@ const formatDate = (dateString: string) =>
 
 export default function JournalPageClient() {
   const searchParams = useSearchParams();
-  const classId = searchParams.get("class_id") || "";
+  
+  // State Class ID (inisialisasi dari URL)
+  const [classId, setClassId] = useState(searchParams.get("class_id") || "");
+  const [availableClasses, setAvailableClasses] = useState<ClassItem[]>([]);
 
   const [className, setClassName] = useState("");
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -58,8 +68,24 @@ export default function JournalPageClient() {
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 1. Fetch Daftar Semua Kelas (Untuk Dropdown)
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await fetch('/api/classes');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableClasses(data || []);
+        }
+      } catch (error) {
+        console.error("Gagal memuat daftar kelas", error);
+      }
+    };
+    fetchClasses();
+  }, []);
+
   // Fungsi untuk mengosongkan form
-  const clearForm = (defaultTeacherId = "") => {
+  const clearForm = useCallback((defaultTeacherId = "") => {
     setJournalEntry({
       id: undefined,
       materi: "",
@@ -68,7 +94,7 @@ export default function JournalPageClient() {
       teacher_id: defaultTeacherId,
     });
     setIsEditing(true);
-  };
+  }, []);
 
   // Fungsi untuk mengambil data jurnal dan detail kelas
   const fetchDataForDate = useCallback(
@@ -112,21 +138,32 @@ export default function JournalPageClient() {
         }
       } catch (error) {
         console.error("Gagal memuat data:", error);
-        alert("Terjadi kesalahan saat memuat data jurnal.");
+        // alert("Terjadi kesalahan saat memuat data jurnal."); // Optional: matikan alert agar tidak mengganggu saat switch kelas cepat
       } finally {
         setLoading(false);
       }
     },
-    [classId]
+    [classId, clearForm]
   );
 
+  // Trigger fetch saat classId atau tanggal berubah
   useEffect(() => {
     if (classId) {
       fetchDataForDate(selectedDate);
     } else {
       setLoading(false);
+      setClassName("");
     }
   }, [selectedDate, classId, fetchDataForDate]);
+
+  // Handler Ganti Kelas via Dropdown
+  const handleClassChange = (newClassId: string) => {
+    setClassId(newClassId);
+    // Update URL browser tanpa reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('class_id', newClassId);
+    window.history.pushState({}, '', url);
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -169,12 +206,11 @@ export default function JournalPageClient() {
     }
   };
 
-  // Fungsi baru untuk menangani reset jurnal
   const handleReset = async () => {
     if (!journalEntry.id) return;
     if (!confirm("Anda yakin ingin menghapus jurnal pada tanggal ini? Form akan dikosongkan.")) return;
 
-    setIsSaving(true); // Tampilkan loading saat proses reset
+    setIsSaving(true);
     try {
         const res = await fetch(`/api/journal/${journalEntry.id}`, { method: 'DELETE' });
         if (!res.ok) {
@@ -182,7 +218,6 @@ export default function JournalPageClient() {
             throw new Error(data.error || "Gagal menghapus jurnal.");
         }
         alert("Jurnal berhasil dihapus.");
-        // Kosongkan form setelah berhasil dihapus
         const defaultTeacher = teachers[0]?.id || "";
         clearForm(defaultTeacher);
     } catch (err) {
@@ -206,7 +241,7 @@ export default function JournalPageClient() {
                 ? "Memuat..."
                 : classId
                 ? formatDate(selectedDate)
-                : "Error"}
+                : "Pilih kelas untuk memulai"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -227,25 +262,30 @@ export default function JournalPageClient() {
         </div>
 
         {/* Form Jurnal */}
-        {loading ? (
-          <p className="text-center text-gray-500 py-8">
-            Memuat data jurnal...
-          </p>
-        ) : !classId ? (
-          <div className="text-center py-10 px-6 bg-red-50 border border-red-200 rounded-lg">
-            <AlertTriangle className="mx-auto h-12 w-12 text-red-400" />
-            <h3 className="mt-2 text-lg font-semibold text-red-800">
-              ID Kelas Tidak Ditemukan
-            </h3>
-            <p className="mt-1 text-sm text-red-700">
-              URL tidak valid. Harap akses halaman ini dari menu Jurnal di
-              halaman utama.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Kontrol Tanggal dan Pengajar */}
+        <div className="space-y-6">
+            
+            {/* Kontrol Filter Kelas & Tanggal */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg border">
+              
+              {/* Pilih Kelas (BARU) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Kelas</label>
+                <div className="relative">
+                    <Filter size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <select 
+                        value={classId} 
+                        onChange={(e) => handleClassChange(e.target.value)} 
+                        className="w-full pl-10 pr-4 py-2 border rounded-md bg-white appearance-none focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                        <option value="" disabled>-- Pilih Kelas --</option>
+                        {availableClasses.map((cls) => (
+                            <option key={cls.id} value={cls.id}>{cls.name}</option>
+                        ))}
+                    </select>
+                </div>
+              </div>
+
+              {/* Pilih Tanggal */}
               <div>
                 <label
                   htmlFor="journal-date"
@@ -260,7 +300,8 @@ export default function JournalPageClient() {
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
                     max={getTodayString()}
-                    className="p-2 border rounded-md bg-white w-full pr-10"
+                    className="p-2 border rounded-md bg-white w-full pr-10 focus:ring-2 focus:ring-blue-500 outline-none"
+                    disabled={!classId} 
                   />
                   <Calendar
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -268,132 +309,145 @@ export default function JournalPageClient() {
                   />
                 </div>
               </div>
-              <div>
-                <label
-                  htmlFor="teacher_id"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Pengajar Bertugas
-                </label>
-                <select
-                  name="teacher_id"
-                  id="teacher_id"
-                  value={journalEntry.teacher_id}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed"
-                >
-                  <option value="">-- Pilih Pengajar --</option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
-            
-            {!isEditing && (
-                <div className="p-3 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-r-lg text-sm">
-                   <p>Jurnal untuk tanggal ini sudah tersimpan. Klik tombol &apos;Edit Jurnal&apos; untuk mengubah.</p>
-                </div>
+
+            {!classId ? (
+                 <div className="text-center py-12 bg-white border border-dashed rounded-lg">
+                    <BookOpen className="mx-auto h-12 w-12 text-gray-300 mb-2" />
+                    <h3 className="text-lg font-semibold text-gray-600">Silakan Pilih Kelas</h3>
+                    <p className="text-gray-500">Pilih kelas di atas untuk mengisi jurnal.</p>
+                 </div>
+            ) : loading ? (
+                <p className="text-center text-gray-500 py-8">Memuat data jurnal...</p>
+            ) : (
+                <>
+                    {/* Dropdown Pengajar */}
+                    <div>
+                        <label
+                        htmlFor="teacher_id"
+                        className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                        Pengajar Bertugas
+                        </label>
+                        <select
+                        name="teacher_id"
+                        id="teacher_id"
+                        value={journalEntry.teacher_id}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="w-full p-2 border rounded-md bg-white disabled:bg-gray-200/50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                        <option value="">-- Pilih Pengajar --</option>
+                        {teachers.map((teacher) => (
+                            <option key={teacher.id} value={teacher.id}>
+                            {teacher.name}
+                            </option>
+                        ))}
+                        </select>
+                    </div>
+
+                    {!isEditing && (
+                        <div className="p-3 bg-green-50 border-l-4 border-green-500 text-green-800 rounded-r-lg text-sm">
+                            <p>Jurnal untuk tanggal ini sudah tersimpan. Klik tombol &apos;Edit Jurnal&apos; untuk mengubah.</p>
+                        </div>
+                    )}
+
+                    {/* Input Fields */}
+                    <div className="space-y-4">
+                        <div>
+                        <label
+                            htmlFor="materi"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                            Materi yang Diajarkan
+                        </label>
+                        <input
+                            type="text"
+                            id="materi"
+                            name="materi"
+                            value={journalEntry.materi}
+                            onChange={handleInputChange}
+                            disabled={!isEditing}
+                            className="w-full border p-2 rounded disabled:bg-gray-200/50 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Contoh: Iqro 1 Hal. 1-3, Hafalan Surat An-Nas"
+                        />
+                        </div>
+                        <div>
+                        <label
+                            htmlFor="deskripsi"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                            Deskripsi Pembelajaran
+                        </label>
+                        <textarea
+                            id="deskripsi"
+                            name="deskripsi"
+                            rows={5}
+                            value={journalEntry.deskripsi}
+                            onChange={handleInputChange}
+                            disabled={!isEditing}
+                            className="w-full border p-2 rounded disabled:bg-gray-200/50 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Jelaskan secara singkat kegiatan pembelajaran hari ini..."
+                        ></textarea>
+                        </div>
+                        <div>
+                        <label
+                            htmlFor="catatan"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                            Catatan (Opsional)
+                        </label>
+                        <input
+                            type="text"
+                            id="catatan"
+                            name="catatan"
+                            value={journalEntry.catatan}
+                            onChange={handleInputChange}
+                            disabled={!isEditing}
+                            className="w-full border p-2 rounded disabled:bg-gray-200/50 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Catatan tambahan untuk siswa atau kelas..."
+                        />
+                        </div>
+                    </div>
+
+                    {/* Tombol Aksi */}
+                    <div className="flex justify-end items-center gap-4 pt-4 border-t">
+                        {!isEditing && (
+                        <button
+                            type="button"
+                            onClick={handleReset}
+                            disabled={isSaving}
+                            className="flex items-center gap-2 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 font-semibold disabled:bg-gray-400"
+                        >
+                            <RotateCcw size={16} />
+                            <span>Reset</span>
+                        </button>
+                        )}
+
+                        {isEditing ? (
+                        <button
+                            type="button"
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold disabled:bg-gray-400"
+                        >
+                            {isSaving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16} />}
+                            <span>{isSaving ? "Menyimpan..." : "Simpan"}</span>
+                        </button>
+                        ) : (
+                        <button
+                            type="button"
+                            onClick={() => setIsEditing(true)}
+                            className="flex items-center gap-2 bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 font-semibold"
+                        >
+                            <Edit size={16} />
+                            <span>Edit Jurnal</span>
+                        </button>
+                        )}
+                    </div>
+                </>
             )}
-
-            {/* Input Fields */}
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="materi"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Materi yang Diajarkan
-                </label>
-                <input
-                  type="text"
-                  id="materi"
-                  name="materi"
-                  value={journalEntry.materi}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className="w-full border p-2 rounded disabled:bg-gray-200/50"
-                  placeholder="Contoh: Iqro 1 Hal. 1-3, Hafalan Surat An-Nas"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="deskripsi"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Deskripsi Pembelajaran
-                </label>
-                <textarea
-                  id="deskripsi"
-                  name="deskripsi"
-                  rows={5}
-                  value={journalEntry.deskripsi}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className="w-full border p-2 rounded disabled:bg-gray-200/50"
-                  placeholder="Jelaskan secara singkat kegiatan pembelajaran hari ini..."
-                ></textarea>
-              </div>
-              <div>
-                <label
-                  htmlFor="catatan"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Catatan (Opsional)
-                </label>
-                <input
-                  type="text"
-                  id="catatan"
-                  name="catatan"
-                  value={journalEntry.catatan}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  className="w-full border p-2 rounded disabled:bg-gray-200/50"
-                  placeholder="Catatan tambahan untuk siswa atau kelas..."
-                />
-              </div>
-            </div>
-
-            {/* Tombol Aksi */}
-            <div className="flex justify-end items-center gap-4 pt-4 border-t">
-              {!isEditing && (
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  disabled={isSaving}
-                  className="flex items-center gap-2 bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 font-semibold disabled:bg-gray-400"
-                >
-                  <RotateCcw size={16} />
-                  <span>Reset</span>
-                </button>
-              )}
-
-              {isEditing ? (
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold disabled:bg-gray-400"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16} />}
-                  <span>{isSaving ? "Menyimpan..." : "Simpan"}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 font-semibold"
-                >
-                  <Edit size={16} />
-                  <span>Edit Jurnal</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
