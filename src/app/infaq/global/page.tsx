@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Plus, X, Loader2, Edit, Trash2, FileText, Wallet, Home, ArrowLeft } from "lucide-react";
+import { Plus, X, Loader2, Edit, Trash2, FileText, Wallet, Home, ArrowLeft, TrendingUp } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable, { RowInput } from "jspdf-autotable";
 
@@ -158,13 +158,17 @@ export default function GlobalInfaqPage() {
             didDrawPage: (data) => {
                 const pageCount = doc.getNumberOfPages();
                 doc.setFontSize(10);
-                // PERUBAHAN DI SINI: Gunakan data.pageNumber
                 doc.text(`Halaman ${data.pageNumber} dari ${pageCount}`, data.settings.margin.left, doc.internal.pageSize.height - 10);
             }
         });
 
         doc.save(`Laporan_Infaq_${monthName}_${year}.pdf`);
     };
+
+    // Hitung Pemasukan Bulan Ini
+    const monthlyIncome = transactions.reduce((acc, t) => {
+        return t.type === 'masuk' ? acc + t.amount : acc;
+    }, 0);
 
     let runningBalance = openingBalance;
 
@@ -186,30 +190,53 @@ export default function GlobalInfaqPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div className="bg-teal-600 text-white p-4 rounded-lg shadow flex items-center gap-4">
-                        <Wallet size={32} className="text-teal-200 flex-shrink-0" />
-                        <div>
-                            <h3 className="font-semibold text-teal-100">Saldo Infaq Saat Ini</h3>
-                            <p className="text-3xl font-bold">{loading ? <Loader2 className="animate-spin" /> : formatCurrency(totalBalance)}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 items-start">
+                    
+                    {/* WRAPPER KOLOM KIRI */}
+                    <div className="flex flex-col gap-4">
+                        
+                        {/* Card 1: Saldo Utama (Hijau) */}
+                        <div className="bg-teal-600 text-white p-4 rounded-lg shadow flex items-center gap-4">
+                            <Wallet size={36} className="text-teal-200 flex-shrink-0" />
+                            <div>
+                                <h3 className="font-semibold text-teal-100 text-sm">Saldo Infaq Saat Ini</h3>
+                                <p className="text-3xl font-bold">
+                                    {loading ? <Loader2 className="animate-spin" /> : formatCurrency(totalBalance)}
+                                </p>
+                            </div>
                         </div>
+
+                        {/* Card 2: Pemasukan Bulan Ini (Biru Transparan) - BARU */}
+                        {!loading && (
+                            <div className="bg-blue-500/10 border border-blue-200 p-4 rounded-lg shadow-sm flex items-center gap-4 text-blue-800">
+                                <div className="p-2 bg-blue-100 rounded-full shrink-0">
+                                    <TrendingUp size={24} className="text-blue-600"/>
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-sm text-blue-600">Pemasukan {monthNames[selectedMonth]}</h3>
+                                    <p className="text-xl font-bold">+{formatCurrency(monthlyIncome)}</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div className="bg-gray-50 p-4 rounded-lg border flex flex-col justify-between gap-2">
+
+                    {/* WRAPPER KOLOM KANAN (Controls) */}
+                    <div className="bg-gray-50 p-4 rounded-lg border flex flex-col gap-4">
                         <div className="flex flex-col sm:flex-row gap-2 w-full">
-                            <button onClick={openModalForAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm">
+                            <button onClick={openModalForAdd} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm shadow-sm">
                                 <Plus size={18}/><span>Tambah Laporan Manual</span>
                             </button>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-2 w-full items-center">
                             <div className="flex gap-2 w-full">
-                                <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm">
+                                <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm shadow-sm">
                                     {monthNames.map((name, index) => <option key={index} value={index}>{name}</option>)}
                                 </select>
-                                <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm">
+                                <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm shadow-sm">
                                     {Array.from({ length: 5 }, (_, i) => today.getFullYear() - i).map(year => <option key={year} value={year}>{year}</option>)}
                                 </select>
                             </div>
-                            <button onClick={handleExportPDF} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm">
+                            <button onClick={handleExportPDF} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold text-sm shadow-sm">
                                 <FileText size={16}/><span>PDF</span>
                             </button>
                         </div>

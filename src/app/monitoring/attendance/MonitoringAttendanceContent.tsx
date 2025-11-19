@@ -48,6 +48,12 @@ type AttendanceStats = {
   percentage: number;
 };
 
+// Tipe untuk daftar kelas (Dropdown)
+type ClassItem = {
+  id: string;
+  name: string;
+};
+
 const monthNames = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
@@ -63,6 +69,9 @@ const formatDateToYYYYMMDD = (date: Date): string => {
 export default function AttendanceMonitoringPage() {
   const [classId, setClassId] = useState("");
   
+  // State untuk menyimpan daftar semua kelas
+  const [availableClasses, setAvailableClasses] = useState<ClassItem[]>([]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const idFromUrl = params.get('class_id') || '';
@@ -110,6 +119,7 @@ export default function AttendanceMonitoringPage() {
     });
   }, []);
 
+  // Fetch Data Monitoring Absensi
   const fetchData = useCallback(async (startDate: string, endDate: string) => {
     if (!classId) return;
     setLoading(true);
@@ -136,6 +146,7 @@ export default function AttendanceMonitoringPage() {
     setDateHeaders(dates);
   }, [selectedMonth, selectedYear]);
 
+  // Fetch Detail Kelas Saat Ini
   useEffect(() => {
     const fetchClassDetails = async () => {
       if (!classId) return;
@@ -151,6 +162,24 @@ export default function AttendanceMonitoringPage() {
     fetchClassDetails();
   }, [classId]);
 
+  // Fetch Daftar Semua Kelas (Untuk Dropdown)
+  useEffect(() => {
+    const fetchAllClasses = async () => {
+      try {
+        const res = await fetch('/api/classes'); // Pastikan endpoint ini tersedia dan me-return array kelas
+        if (!res.ok) throw new Error("Gagal memuat daftar kelas");
+        const data = await res.json();
+        // Asumsi response API adalah array objek { id: string, name: string }
+        if (Array.isArray(data)) {
+            setAvailableClasses(data);
+        }
+      } catch (error) {
+        console.error("Error fetching classes list:", error);
+      }
+    };
+    fetchAllClasses();
+  }, []);
+
   const loadData = useCallback(() => {
     const startDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth, 1));
     const endDate = formatDateToYYYYMMDD(new Date(selectedYear, selectedMonth + 1, 0));
@@ -162,6 +191,15 @@ export default function AttendanceMonitoringPage() {
       loadData();
     }
   }, [loadData, classId]);
+
+  // Handler Ganti Kelas
+  const handleClassChange = (newClassId: string) => {
+    setClassId(newClassId);
+    // Update URL agar bookmarkable (opsional)
+    const url = new URL(window.location.href);
+    url.searchParams.set('class_id', newClassId);
+    window.history.pushState({}, '', url);
+  };
 
   const getStatusClasses = (status: AttendanceStatus) => {
     switch (status) {
@@ -265,6 +303,19 @@ export default function AttendanceMonitoringPage() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
           <div className="flex flex-col sm:flex-row gap-2 items-center w-full md:w-auto">
             <div className="flex gap-2 w-full sm:w-auto">
+              {/* --- DROPDOWN KELAS (BARU) --- */}
+              <select 
+                value={classId} 
+                onChange={(e) => handleClassChange(e.target.value)} 
+                className="w-full sm:w-48 p-2 border rounded-md bg-white text-sm font-medium"
+              >
+                <option value="" disabled>Pilih Kelas</option>
+                {availableClasses.map((cls) => (
+                    <option key={cls.id} value={cls.id}>{cls.name}</option>
+                ))}
+              </select>
+              {/* ----------------------------- */}
+
               <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="w-full p-2 border rounded-md bg-white text-sm">
                 {monthNames.map((name, index) => <option key={index} value={index}>{name}</option>)}
               </select>
@@ -274,7 +325,7 @@ export default function AttendanceMonitoringPage() {
             </div>
             <button onClick={loadData} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold text-sm">
               <RefreshCw size={16} />
-              <span>Refresh Data</span>
+              <span>Refresh</span>
             </button>
           </div>
           
@@ -396,4 +447,3 @@ export default function AttendanceMonitoringPage() {
     </div>
   );
 }
-
