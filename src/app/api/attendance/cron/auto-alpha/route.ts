@@ -74,7 +74,7 @@ export async function GET(req: Request) {
       class_id: student.class_id!,
       date: dateString,
       status: "Alpha",
-      time: timeString,
+      time: null,
     }));
 
     // 5. Insert

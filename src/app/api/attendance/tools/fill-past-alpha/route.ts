@@ -83,7 +83,7 @@ export async function GET(req: Request) {
           class_id: s.class_id,
           date: dateString,
           status: "Alpha",
-          time: timeString,
+         time: null,
         }));
 
         const { error: insErr } = await supabaseAdmin
