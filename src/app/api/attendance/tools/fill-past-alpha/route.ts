@@ -6,20 +6,34 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+type StudentRow = {
+  id: string;
+  class_id: string | null;
+};
+
+type AttendanceRow = {
+  student_id: string;
+};
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const now = new Date();
-    
+
     // Ambil parameter bulan & tahun
-    const targetMonth = searchParams.get('month') ? parseInt(searchParams.get('month')!) : now.getMonth();
-    const targetYear = searchParams.get('year') ? parseInt(searchParams.get('year')!) : now.getFullYear();
+    const targetMonth = searchParams.get("month")
+      ? parseInt(searchParams.get("month")!)
+      : now.getMonth();
+    const targetYear = searchParams.get("year")
+      ? parseInt(searchParams.get("year")!)
+      : now.getFullYear();
 
     const startDate = 1;
-    // Jika target bulan ini, sampai kemarin. Jika bulan lalu, sampai akhir bulan.
+
+    // Tentukan endDate
     let endDate = new Date(targetYear, targetMonth + 1, 0).getDate();
     if (targetMonth === now.getMonth() && targetYear === now.getFullYear()) {
-        endDate = now.getDate() - 1;
+      endDate = now.getDate() - 1;
     }
 
     let totalUpdated = 0;
@@ -29,70 +43,74 @@ export async function GET(req: Request) {
 
     // 1. Ambil Siswa Aktif
     const { data: allStudents, error: stErr } = await supabaseAdmin
-      .from('students')
-      .select('id, class_id')
-      .not('class_id', 'is', null); 
-    
+      .from("students")
+      .select("id, class_id")
+      .not("class_id", "is", null);
+
     if (stErr || !allStudents) throw new Error("Gagal ambil siswa");
 
     // 2. Looping Tanggal
     for (let day = startDate; day <= endDate; day++) {
-      // Set jam 12 siang (Aman Timezone)
       const currentObj = new Date(targetYear, targetMonth, day, 12, 0, 0);
-      const dateString = currentObj.toISOString().split('T')[0]; 
+      const dateString = currentObj.toISOString().split("T")[0];
       const timeString = currentObj.toISOString();
 
-      // --- LOGIKA UTAMA DI SINI ---
-      
-      // Cek apakah ada data absensi APAPUN di tanggal ini
+      // Ambil absensi tanggal tersebut
       const { data: existing, error: attErr } = await supabaseAdmin
-        .from('attendance_records')
-        .select('student_id')
-        .eq('date', dateString);
+        .from("attendance_records")
+        .select("student_id")
+        .eq("date", dateString);
 
       if (attErr) continue;
 
-      // JIKA TIDAK ADA DATA SAMA SEKALI -> SKIP (Anggap Libur/Tidak Ada KBM)
+      // Jika tidak ada absensi sama sekali → Hari libur → SKIP
       if (!existing || existing.length === 0) {
-        // console.log(`  [SKIP] ${dateString}: Tidak ada aktifitas absensi.`);
-        continue; 
+        continue;
       }
 
-      // JIKA ADA DATA -> Berarti Hari Aktif. Cari siapa yang belum absen.
-      const attendedIds = new Set(existing.map((a: any) => a.student_id));
-      const absentStudents = allStudents.filter(s => !attendedIds.has(s.id));
+      // Jika ada aktivitas → hari aktif → cek siapa yang belum absen
+      const attendedIds = new Set(
+        existing.map((a: AttendanceRow) => a.student_id)
+      );
+
+      const absentStudents = allStudents.filter(
+        (s: StudentRow) => !attendedIds.has(s.id)
+      );
 
       if (absentStudents.length > 0) {
-        const insertData = absentStudents.map(s => ({
+        const insertData = absentStudents.map((s: StudentRow) => ({
           student_id: s.id,
           class_id: s.class_id,
           date: dateString,
           status: "Alpha",
-          time: timeString
+          time: timeString,
         }));
 
         const { error: insErr } = await supabaseAdmin
-          .from('attendance_records')
+          .from("attendance_records")
           .insert(insertData);
 
         if (!insErr) {
           totalUpdated += insertData.length;
-          logs.push(`${dateString}: Menambahkan ${insertData.length} Alpha (Karena hari aktif).`);
-          console.log(`  [OK] ${dateString}: Terdeteksi hari aktif. Mengisi ${insertData.length} Alpha.`);
+          logs.push(
+            `${dateString}: Menambahkan ${insertData.length} Alpha (Karena hari aktif).`
+          );
+
+          console.log(
+            `  [OK] ${dateString}: Hari aktif. Mengisi ${insertData.length} Alpha.`
+          );
         }
-      } else {
-          // console.log(`  [OK] ${dateString}: Hari aktif, tapi semua hadir lengkap.`);
       }
     }
 
     return NextResponse.json({
       success: true,
-      mode: "active_days_only", // Info mode
+      mode: "active_days_only",
       total_students_marked_alpha: totalUpdated,
-      details: logs
+      details: logs,
     });
-
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
