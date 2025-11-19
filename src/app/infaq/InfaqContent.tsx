@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Home, Check, Loader2, Filter, Calendar, Wallet } from "lucide-react";
+import { ArrowLeft, Home, Check, Loader2, Filter, Calendar, Wallet, RotateCcw, Edit, Lock } from "lucide-react";
 
 type Student = { id: string; name: string };
 type InfaqData = { [studentId: string]: { amount: number; description?: string } };
@@ -133,6 +133,45 @@ export default function InfaqContent() {
     }
   };
 
+  // Fungsi Reset Infaq (Set semua jadi 0 dan buka kunci)
+  const handleResetInfaq = async () => {
+    if (!confirm("Apakah Anda yakin ingin me-reset data infaq ini menjadi 0? Aksi ini juga akan membuka kunci data.")) return;
+    
+    setIsSaving(true);
+    try {
+      // Kita kirim data kosong/nol ke server
+      const resetData: InfaqData = {};
+      students.forEach(s => {
+          resetData[s.id] = { amount: 0 };
+      });
+
+      // Simpan data 0
+      const saveRes = await fetch('/api/infaq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classId, date: selectedDate, infaqData: resetData }),
+      });
+
+      // Buka kunci validasi (Delete validation)
+      const unlockRes = await fetch(`/api/infaq/validate?class_id=${classId}&date=${selectedDate}`, {
+          method: 'DELETE'
+      });
+
+      if (!saveRes.ok || !unlockRes.ok) {
+        throw new Error("Gagal me-reset data.");
+      }
+
+      alert("Data infaq berhasil di-reset.");
+      setInfaqData(resetData); // Update state lokal jadi 0
+      setEditMode(true); // Buka mode edit
+
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Terjadi kesalahan saat reset.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
       <div className="bg-white p-6 rounded-xl shadow-md max-w-4xl mx-auto">
@@ -239,20 +278,35 @@ export default function InfaqContent() {
 
             {/* Tombol Aksi */}
             {students.length > 0 && (
-                <div className="mt-6 flex justify-end">
-                {editMode ? (
-                    <button onClick={handleSaveInfaq} className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg flex items-center gap-2 justify-center disabled:bg-green-400" disabled={isSaving}>
-                    {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
-                    {isSaving ? 'Menyimpan...' : 'Simpan & Kunci'}
+                <div className="mt-6 flex justify-end items-center gap-3">
+                    {/* Tombol Reset (Hanya muncul di mode Edit atau jika ingin reset total) */}
+                    <button 
+                        onClick={handleResetInfaq} 
+                        className="px-4 py-3 bg-gray-500 text-white font-semibold rounded-lg hover:bg-gray-600 flex items-center gap-2 disabled:bg-gray-300"
+                        disabled={isSaving}
+                        title="Reset semua infaq jadi 0"
+                    >
+                        <RotateCcw size={18} />
+                        {isSaving ? 'Memproses...' : 'Reset'}
                     </button>
-                ) : (
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-200">Data Terkunci</span>
-                        <button onClick={() => setEditMode(true)} className="px-6 py-2 bg-yellow-500 text-white font-bold rounded-lg hover:bg-yellow-600 shadow flex items-center gap-2 justify-center">
-                        Edit Infaq
+
+                    {editMode ? (
+                        <button onClick={handleSaveInfaq} className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 shadow-lg flex items-center gap-2 justify-center disabled:bg-green-400" disabled={isSaving}>
+                            {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Check size={20} />}
+                            {isSaving ? 'Menyimpan...' : 'Simpan & Kunci'}
                         </button>
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-2 rounded-lg border border-green-200 font-medium">
+                                <Lock size={16} />
+                                Data Terkunci
+                            </div>
+                            <button onClick={() => setEditMode(true)} className="px-6 py-3 bg-yellow-500 text-white font-bold rounded-lg hover:bg-yellow-600 shadow flex items-center gap-2 justify-center">
+                                <Edit size={20} />
+                                Edit Infaq
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
           </>
