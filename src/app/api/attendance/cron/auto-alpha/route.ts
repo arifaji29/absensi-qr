@@ -16,6 +16,7 @@ type AttendanceRow = {
 };
 
 export async function GET(req: Request) {
+  // Cek Auth (Middleware atau Header)
   const authHeader = req.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -27,7 +28,6 @@ export async function GET(req: Request) {
       now.toLocaleString("en-US", { timeZone: "Asia/Jakarta" })
     );
     const dateString = indonesiaTime.toISOString().split("T")[0];
-    const timeString = indonesiaTime.toISOString();
 
     // 1. Ambil siswa yang punya class_id
     const { data: allStudents, error: studentError } = await supabaseAdmin
@@ -53,6 +53,17 @@ export async function GET(req: Request) {
     if (attendanceError)
       throw new Error(`Gagal ambil absensi: ${attendanceError.message}`);
 
+    // --- [LOGIKA BARU: HARI AKTIF CHECK] ---
+    // Jika data absensi hari ini KOSONG (0), berarti libur / tidak ada KBM.
+    // Maka kita STOP di sini, jangan isi Alpha.
+    if (!existingAttendance || existingAttendance.length === 0) {
+        return NextResponse.json({
+            message: `Skip: Tidak ada aktivitas absensi pada tanggal ${dateString} (Dianggap Libur).`,
+            processed_date: dateString
+        });
+    }
+    // ---------------------------------------
+
     const attendedStudentIds = new Set(
       existingAttendance?.map((a: AttendanceRow) => a.student_id)
     );
@@ -68,13 +79,13 @@ export async function GET(req: Request) {
       });
     }
 
-    // 4. Data Alpha
+    // 4. Data Alpha (Time di-set null agar rapi)
     const alphaData = absentStudents.map((student) => ({
       student_id: student.id,
       class_id: student.class_id!,
       date: dateString,
       status: "Alpha",
-      time: null,
+      time: null, // Pastikan null agar tidak muncul jam 23:00
     }));
 
     // 5. Insert
