@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, Fragment } from "react";
 import Link from "next/link"; 
-import { ArrowLeft, Home, RotateCcw, Check, Loader2, X } from "lucide-react";
+import { ArrowLeft, Home, RotateCcw, Check, Loader2, X, Filter } from "lucide-react";
 
 // Tipe Data
 type Attendance = {
@@ -12,7 +12,7 @@ type Attendance = {
   time: string | null;
 };
 
-// Tipe untuk data siswa dari API untuk menghindari 'any'
+// Tipe untuk data siswa dari API
 type StudentFromAPI = {
     student_id: string;
     name: string;
@@ -27,13 +27,21 @@ type Notification = {
   isError?: boolean;
 };
 
+// Tipe Kelas untuk Dropdown
+type ClassItem = {
+    id: string;
+    name: string;
+};
+
 // Fungsi helper
 const getTodayString = () => new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
 const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("id-ID", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Jakarta' });
 
 export default function AttendanceContent() {
   const [classId, setClassId] = useState("");
+  const [availableClasses, setAvailableClasses] = useState<ClassItem[]>([]);
   
+  // Inisialisasi classId dari URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const idFromUrl = params.get('class_id') || '';
@@ -56,10 +64,28 @@ export default function AttendanceContent() {
     }
   }, []);
 
+  // Fetch Daftar Semua Kelas (Untuk Dropdown)
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const res = await fetch('/api/classes');
+        if (res.ok) {
+          const data = await res.json();
+          setAvailableClasses(data || []);
+        }
+      } catch (error) {
+        console.error("Gagal memuat daftar kelas", error);
+      }
+    };
+    fetchClasses();
+  }, []);
+
+  // Fetch Data Absensi
   const fetchData = useCallback(async (date: string) => {
     if (!classId) return;
     setLoading(true);
     try {
+      // Fetch data absensi dan detail kelas secara paralel
       const [studentRes, classRes] = await Promise.all([
         fetch(`/api/attendance?class_id=${classId}&date=${date}`),
         fetch(`/api/classes/${classId}/details`),
@@ -82,15 +108,20 @@ export default function AttendanceContent() {
 
     } catch (err) {
       console.error("Gagal memuat data:", err);
-      alert("Gagal memuat data absensi.");
+      // alert("Gagal memuat data absensi."); // Optional: Alert dimatikan agar tidak mengganggu saat pindah kelas cepat
     } finally {
       setLoading(false);
     }
   }, [classId]);
 
+  // Trigger fetch saat classId atau tanggal berubah
   useEffect(() => {
     if (classId) {
       fetchData(selectedDate);
+    } else {
+        setAttendance([]);
+        setClassName("");
+        setLoading(false);
     }
   }, [fetchData, selectedDate, classId]);
 
@@ -100,6 +131,15 @@ export default function AttendanceContent() {
       return () => clearTimeout(timer);
     }
   }, [notification]);
+
+  // Handler Ganti Kelas via Dropdown
+  const handleClassChange = (newClassId: string) => {
+    setClassId(newClassId);
+    // Update URL browser tanpa reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('class_id', newClassId);
+    window.history.pushState({}, '', url);
+  };
 
   const handleStatusChange = async (student_id: string, new_status: string) => {
     const oldAttendance = [...attendance];
@@ -174,12 +214,11 @@ export default function AttendanceContent() {
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 pb-4 border-b">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
-                Absensi {className ? `Kelas ${className}` : "..."}
+                Absensi {className ? `Kelas ${className}` : ""}
               </h1>
               <p className="text-sm text-gray-500 mt-1">{formatDate(selectedDate)}</p>
             </div>
             <div className="flex items-center gap-2">
-              {/* Perbaikan: Menggunakan tag <a> kembali */}
               <Link href="/dashboard-attendance" className="flex items-center gap-2 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm">
                 <ArrowLeft size={16} /><span>Back</span>
               </Link>
@@ -189,54 +228,101 @@ export default function AttendanceContent() {
             </div>
           </div>
 
+          {/* Controls & Filters (Updated Layout) */}
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
-            <div className="w-full sm:w-auto">
-              <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
-              <input type="date" id="attendance-date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} max={getTodayString()} className="p-2 border rounded-md bg-white w-full" disabled={loading} />
+            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+                
+                {/* Filter Kelas (BARU) */}
+                <div className="w-full sm:w-auto">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Kelas</label>
+                    <div className="relative">
+                        <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                        <select 
+                            value={classId} 
+                            onChange={(e) => handleClassChange(e.target.value)} 
+                            className="pl-9 pr-4 py-2 border rounded-md bg-white w-full sm:w-48 appearance-none focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                            <option value="" disabled>-- Pilih Kelas --</option>
+                            {availableClasses.map((cls) => (
+                                <option key={cls.id} value={cls.id}>{cls.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Filter Tanggal */}
+                <div className="w-full sm:w-auto">
+                    <label htmlFor="attendance-date" className="block text-sm font-medium text-gray-700 mb-1">Pilih Tanggal</label>
+                    <input 
+                        type="date" 
+                        id="attendance-date" 
+                        value={selectedDate} 
+                        onChange={(e) => setSelectedDate(e.target.value)} 
+                        max={getTodayString()} 
+                        className="p-2 border rounded-md bg-white w-full sm:w-auto" 
+                        disabled={loading} 
+                    />
+                </div>
             </div>
-            <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm">
-              <RotateCcw size={16} /><span>Reset Absensi Hari Ini</span>
-            </button>
+            
+            {classId && (
+                <button onClick={handleReset} className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 font-semibold text-sm w-full md:w-auto">
+                <RotateCcw size={16} /><span>Reset Absensi Hari Ini</span>
+                </button>
+            )}
           </div>
 
-          {loading ? (<p className="text-center text-gray-500 py-8">Memuat data absensi...</p>) : (
+          {/* Table Content */}
+          {!classId ? (
+             <div className="text-center py-12 border border-dashed rounded-lg bg-gray-50">
+                 <p className="text-gray-500 font-medium">Silakan pilih kelas terlebih dahulu untuk memulai absensi.</p>
+             </div>
+          ) : loading ? (
+             <p className="text-center text-gray-500 py-8">Memuat data absensi...</p>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-100 text-left text-gray-600">
                   <tr>
-                    <th className="p-4 font-semibold">No.</th>
+                    <th className="p-4 font-semibold text-center w-16">No.</th>
                     <th className="p-4 font-semibold">Nama</th>
                     <th className="p-4 font-semibold w-48">Status</th>
-                    <th className="p-4 font-semibold">Waktu Kehadiran</th>
+                    <th className="p-4 font-semibold text-center">Waktu Kehadiran</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attendance.map((a, index) => (
-                    <tr key={a.student_id} className={`border-b last:border-b-0 ${a.status === 'Hadir' ? 'bg-green-50' : a.status !== 'Belum Hadir' ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
-                      <td className="p-3 whitespace-nowrap text-center">{(index + 1).toString().padStart(2, '0')}</td>
-                      <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{a.name}</td>
-                      <td className="p-3">
-                        <div className="relative">
-                          <select
-                            value={a.status}
-                            onChange={(e) => handleStatusChange(a.student_id, e.target.value)}
-                            className="w-full p-2 border rounded-md bg-white appearance-none disabled:bg-gray-200/50 disabled:cursor-not-allowed"
-                            disabled={loading || updatingStudentId === a.student_id}
-                          >
-                            {statusOptions.map((opt) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                          {updatingStudentId === a.student_id && (
-                            <Loader2 size={16} className="animate-spin text-gray-500 absolute right-2 top-1/2 -translate-y-1/2" />
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-3 whitespace-nowrap text-gray-600 text-center">
-                        {a.time ? new Date(a.time).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: "Asia/Jakarta" }) : "-"}
-                      </td>
-                    </tr>
-                  ))}
+                  {attendance.length === 0 ? (
+                     <tr>
+                        <td colSpan={4} className="text-center p-8 text-gray-500">Tidak ada siswa di kelas ini.</td>
+                     </tr>
+                  ) : (
+                    attendance.map((a, index) => (
+                        <tr key={a.student_id} className={`border-b last:border-b-0 ${a.status === 'Hadir' ? 'bg-green-50' : a.status !== 'Belum Hadir' ? 'bg-yellow-50' : 'hover:bg-gray-50'}`}>
+                        <td className="p-3 whitespace-nowrap text-center">{(index + 1).toString().padStart(2, '0')}</td>
+                        <td className="p-3 font-medium text-gray-800 whitespace-nowrap">{a.name}</td>
+                        <td className="p-3">
+                            <div className="relative">
+                            <select
+                                value={a.status}
+                                onChange={(e) => handleStatusChange(a.student_id, e.target.value)}
+                                className="w-full p-2 border rounded-md bg-white appearance-none disabled:bg-gray-200/50 disabled:cursor-not-allowed focus:ring-2 focus:ring-blue-500 outline-none"
+                                disabled={loading || updatingStudentId === a.student_id}
+                            >
+                                {statusOptions.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                            {updatingStudentId === a.student_id && (
+                                <Loader2 size={16} className="animate-spin text-gray-500 absolute right-2 top-1/2 -translate-y-1/2" />
+                            )}
+                            </div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-gray-600 text-center">
+                            {a.time ? new Date(a.time).toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: "Asia/Jakarta" }) : "-"}
+                        </td>
+                        </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -246,4 +332,3 @@ export default function AttendanceContent() {
     </Fragment>
   );
 }
-
